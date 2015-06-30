@@ -1,0 +1,85 @@
+/**
+ * These are the default configuration values for the nocto bot system.
+ * It is recommended to keep this file intact and override values using a `local.json`.
+ * See https://github.com/lorenwest/node-config/wiki/Configuration-Files for details.
+ * Values marked with {override} must be changed in order for the bot to function.
+ */
+
+{
+    "api": {
+        // Telegram bot API token {override}
+        "token": "",
+        // Location of Telegram bot API
+        "baseUri": "https://api.telegram.org/bot",
+        // Time before failing API call [ms]
+        "callTimeout": 5000,
+        // Wait time before retrying a failed long poll, if retry is desired [ms]
+        "pollRetry": 30000,
+        // Long polling connection hold time hint [s]
+        // Higher values have less overhead but Telegram seems to be forcing a cap of 20 at the moment
+        "pollTimeout": 60,
+        // Whether to enforce certificate validity
+        "strictSSL": true
+    },
+    
+    "behavior": {
+        // Whether to process or drop messages sent directly to the bot
+        // Options for more detailed control will be added later
+        // Set everything to false to completely block private messages
+        "allowPrivate": {
+            // If true, accept private messages from strangers
+            "fromAll": true
+        },
+        
+        // Array of prefix strings to recognize as a command message
+        "commandPrefix": [ "/" ]
+    },
+    
+    "plugins": {
+        // List of registered plugins, from high to low message processing priority
+        "register": [
+            "echo"
+        ],
+        
+        // Plugins to be automatically enabled after a (re)load
+        // Currently this is the only way of enabling plugins
+        "autoEnabled": [
+            "echo"
+        ],
+        
+        // Optional plugin-specific configuration overrides
+        "config": {
+            "echo": {
+                "reverse": false
+            }        
+        }
+    },
+    
+    // Process return codes for various conditions
+    "exitCodes": {
+        "botStartFailed": 3
+    },
+    
+    // See https://github.com/nomiddlename/log4js-node#configuration
+    "log": {
+        "appenders": [
+            {
+                "type": "console"
+            },
+            {
+                "type": "dateFile",
+                "filename": "logs/nocto",
+                "pattern": "-yyyy-MM-dd.log",
+                "alwaysIncludePattern": true
+            }
+        ],
+      
+        "levels": {
+            "nocto": "ALL",
+            "tgbot": "ALL",
+            "plugins": "ALL"
+        }
+    }
+
+    
+}

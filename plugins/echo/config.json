@@ -1,0 +1,15 @@
+/**
+ * config.json is meant for declaring static (load-time) configuration parameters.
+ * These are the plugin author's default values, they can be overridden using the
+ * plugins.config object in the main configuration.
+ * 
+ * This file is optional: not having a config.json will set the plugin's config
+ * resource to null. If it does exist however, syntax errors will prevent the
+ * plugin from loading successfully.
+ */
+ 
+{
+    // For demonstration purposes, this option is set to true in this file but
+    // set to false in config/default.json. As a result, it will be false.
+    "reverse": true
+}

@@ -1,0 +1,3 @@
+# Local config files can be used to override default.json, see:
+# https://github.com/lorenwest/node-config/wiki/Configuration-Files
+local*.*
