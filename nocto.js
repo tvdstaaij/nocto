@@ -44,15 +44,17 @@ function getMe() {
 }
 
 // Boot step 2: load available plugins
+var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
     log.info('[3] Load plugins');
-    return Q.allSettled(plugins.load());
+    return Q.allSettled(plugins.load(pluginLoadList));
 }
 
 // Boot step 3: enable plugins marked for auto-enable
+var pluginEnableList = config.get('plugins.autoEnabled');
 function enablePlugins() {
     log.info('[4] Auto-enable plugins');
-    return Q.allSettled(plugins.enable(config.get('plugins.autoEnabled')));
+    return Q.allSettled(plugins.enable(pluginEnableList));
 }
 
 // Boot step 4: instruct bot client to start polling
@@ -72,7 +74,7 @@ getMe() // Execute step 1
 })
 .then(function(promises) { // Handle step 2 result
     promises.forEach(function(promise, index) {
-        var plugin = plugins.getNames()[index];
+        var plugin = pluginLoadList[index];
         if (promise.state == 'fulfilled') {
             log.info('Loaded plugin ' + plugin);
         } else {
@@ -83,12 +85,13 @@ getMe() // Execute step 1
     return enablePlugins(); // Execute step 3
 })
 .then(function(promises) { // Handle step 3 result
-    promises.forEach(function(promise) {
+    promises.forEach(function(promise, index) {
+        var plugin = pluginEnableList[index];
         if (promise.state == 'fulfilled') {
             log.info('Automatically enabled plugin ' + promise.value.name);
         } else {
-            log.error('Failed to automatically enable plugin '
-                      + promise.value.name + ':', promise.reason);
+            log.error('Failed to automatically enable plugin ' + plugin + ':',
+                      promise.reason);
         }
     });
     return startPoll(); // Execute step 4
