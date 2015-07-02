@@ -3,7 +3,6 @@
 * Timeouts on critical plugin operations (load/enable/disable)
 * Handle bot-specific command addressing (i.e. /command@SomeBot)
 * Dynamic plugin control with reload support
-* Support for sending layout data in API methods (e.g. custom keyboards)
 * Properly test all API methods with various parameters
 * Use MongoDB for keeping track of state/users/chats & providing a database service for plugins
 * Implement more allowPrivate rules (fromKnown, fromPrivileged)
