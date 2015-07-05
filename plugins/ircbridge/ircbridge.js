@@ -70,6 +70,9 @@ handlers.handleMessage = function(message, meta) {
                 );
             }
             return;
+        case '#':
+        case '/':
+            return;
         }
     }
     relayTelegramEvent(message);
