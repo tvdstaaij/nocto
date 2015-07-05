@@ -50,20 +50,20 @@ module.exports = function loadPlugin(resources) {
         },
 
         // Called when the plugin is enabled and a new message is available.
-        // The message object contains some metadata as well as the raw data
-        // as specified in the Telegram bot API documentation (message.raw).
+        // The message object contains the raw data as specified in the Telegram
+        // bot API documentation, meta contains some useful additional data.
         // This handler must not block; make sure I/O and other long operations
         // are performed asynchronously. The bot does *not check* on this
         // functions progress, use timeouts and such to make sure its asynchronous
         // operations are completed within a reasonable amount of time.
-        handleMessage: function(message) {
-            if (!message.command || // This message was not detected as a bot command
-                !message.fresh) { // This is a backlog message (sent before the bot was started)
+        handleMessage: function(message, meta) {
+            if (!meta.command || // This message was not detected as a bot command
+                !meta.fresh) { // This is a backlog message (sent before the bot was started)
                 return;
             }
             
             // Let's handle this message if it's detected as an 'echo' command.
-            var command = message.command;
+            var command = meta.command;
             if (command.name.toLowerCase() == 'echo') {
                 // Initiate an API call to echo the message back.
                 // Note that this returns immediately, the actual call is
@@ -72,7 +72,7 @@ module.exports = function loadPlugin(resources) {
                 // used if you need control over the result (e.g. success check
                 // or sequential calls), as done below.
                 api.sendMessage({
-                    chat_id: message.raw.chat.id,
+                    chat_id: message.chat.id,
                     text: config.reverse ?
                           reverse(command.argument) : command.argument
                 }, function(error, result) {

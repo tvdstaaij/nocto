@@ -27,14 +27,14 @@ var plugins = new PluginManager(extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
 }), pluginResources);
 
-bot.on('messageReceived', function(message) {
+bot.on('messageReceived', function(message, meta) {
     if (config.get('behavior.allowPrivate.fromAll') === false &&
-        message.private) {
+        meta.private) {
         return;
     }
     plugins.invokeHandler('handleMessage', {
         requireEnabled: true
-    }, [message]);
+    }, [message, meta]);
 });
 
 // Boot step 1: get own identity (functions as API test as well)
