@@ -1,0 +1,54 @@
+{
+    // IRC server configurations
+    "servers": {
+        // Add one or more servers like so:
+        "my_server": {
+            // Basic settings: server and nickname
+            "host": "irc.some-network.net",
+            "nick": "mybot",
+            // Additional settings, refer to node-irc documentation:
+            // https://node-irc.readthedocs.org/en/latest/API.html#irc.Client
+            "options": {
+                "userName": "telegram",
+                "realName": "Nocto Telegram-IRC Bridge",
+                "port": 6667,
+                "floodProtection": true,
+                "floodProtectionDelay": 500,
+                "encoding": "UTF-8"
+            },
+            // Add one or more Telegram <-> IRC routes here
+            // You can use the trace plugin to discover Telegram group IDs
+            "channels": {
+                // This links Telegram group ID -1234567 to IRC channel #mychan
+                "#mychan": {
+                    // Telegram -> IRC direction (multiple groups possible)
+                    "relayFrom": [-1234567],
+                    // IRC -> Telegram direction (multiple groups possible)
+                    "relayTo": [-1234567]
+                }
+            }
+        }
+    },
+    // Mozilla/chatzilla easter egg, provide an OPUS encoded version of
+    // rheet.wav (relative to this directory) to enable
+    "rheet": "",
+    // Indent specification as used with JSON.stringify()
+    "whoisIndenting": 4,
+    // Max number of times to retry connection to server
+    "ircRetryCount": 3,
+    // IRC event types to relay
+    "ircEvents": [
+        "message", "notice", "action", "join", "part", "quit", "kick", "nick",
+        "topic", "names"
+    ],
+    // Generate an IRC color for every Telegram user
+    "ircColoredNames": true,
+    // Adjust this to shuffle the colors for the ircColoredNames feature
+    "ircColorHashBase": 0,
+    // Reason to use with IRC's QUIT command when shutting down
+    "ircQuitReason": "Shutting down",
+    // Telegram user suffix used in the same fashion as for channels, e.g. "@tg"
+    "telegramUserSuffix": "",
+    // Max number of lines per telegram message to relay (anti-flood)
+    "telegramLineLimit": 5
+}
