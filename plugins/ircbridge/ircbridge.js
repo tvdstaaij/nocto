@@ -327,7 +327,7 @@ function findClientForChannel(channel, telegramGroup) {
     if (!channelFound) {
         api.sendMessage({
             chat_id: telegramGroup,
-            text: 'Channel ' + ircChannel +
+            text: 'Channel ' + channel +
             ' is not associated with this group.'
         });
     }
