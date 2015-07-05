@@ -2,6 +2,7 @@
     // IRC server configurations
     "servers": {
         // Add one or more servers like so:
+        /*
         "my_server": {
             // Basic settings: server and nickname
             "host": "irc.some-network.net",
@@ -28,6 +29,7 @@
                 }
             }
         }
+        */
     },
     // Mozilla/chatzilla easter egg, provide an OPUS encoded version of
     // rheet.wav (relative to this directory) to enable
