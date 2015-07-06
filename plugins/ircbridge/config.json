@@ -47,6 +47,8 @@
     "ircColoredNames": true,
     // Adjust this to shuffle the colors for the ircColoredNames feature
     "ircColorHashBase": 0,
+    // Whether to add "@#chan" to IRC usernames in messages relayed to Telegram
+    "ircUserSuffix": true,
     // Reason to use with IRC's QUIT command when shutting down
     "ircQuitReason": "Shutting down",
     // Telegram user suffix used in the same fashion as for channels, e.g. "@tg"

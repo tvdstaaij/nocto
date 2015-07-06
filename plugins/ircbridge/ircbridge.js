@@ -243,7 +243,8 @@ function formatIrcEvent(event, ownUser) {
     switch (event.type) {
     case 'message':
     case 'notice':
-        return '<' + event.from + '@' + event.channel + '> ' + event.text;
+        var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
+        return '<' + event.from + userSuffix + '> ' + event.text;
     case 'action':
         return '** ' + event.from + '@' + event.channel + ' ' + event.text;
     case 'join':
