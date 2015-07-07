@@ -1,15 +1,12 @@
 {
     "name": "nocto",
     "description": "Modular Telegram bot using the official bot API",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "main": "nocto.js",
     "scripts": {
         "start": "node nocto.js"
     },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/tvdstaaij/nocto.git"
-    },
+    "repository": "tvdstaaij/nocto",
     "dependencies": {
         "config": "~1.14.0",
         "log4js": "~0.6.26",
@@ -17,6 +14,10 @@
         "querystring": "~0.2.0",
         "request": "~2.58.0",
         "util-extend": "~1.0.1"
+    },
+    "optionalDependencies": {
+        "observed": "~1.1.1",
+        "store": "alexkwolfe/node-store#d6819f7ea9"
     },
     "license": "GPL-3.0"
 }

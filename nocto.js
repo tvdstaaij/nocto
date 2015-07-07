@@ -54,19 +54,33 @@ if (memlogSetting) {
 log.info('Initializing nocto/' + pjson.version);
 log.info('[1] Setup components and hooks');
 
+botUtil.setAppRoot(__dirname);
+
+var services = {};
+config.get('services.register').forEach(function(serviceName) {
+    var service = require('./services/' + serviceName + '.js');
+    if (service.init) {
+        service.init(config, services);
+    }
+    services[serviceName] = service;
+});
+
 var bot = new TgBot(extend(config.get('api'), {
     logCategory: 'tgbot',
     commandPrefix: config.get('behavior.commandPrefix')
 }));
+
 var pluginResources = {
     log: log4js.getLogger('plugins'),
     api: bot.api
 };
 var plugins = new PluginManager(extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
-}), pluginResources);
+}), pluginResources, services);
 
 bot.on('messageReceived', function(message, meta) {
+    // This is a candidate for refactoring into a service / filter
+    // Would also make it possible to use resources like persistent storage
     if (config.get('behavior.allowPrivate.fromAll') === false &&
         meta.private) {
         return;

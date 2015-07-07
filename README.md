@@ -14,7 +14,9 @@ This project is under heavy development; consider it a buggy alpha version.
 2. Create a `config/local.json`, overriding values from `config/default.json`
    where desired. Specifying `api.token` is required. Note that only the `echo`
    plugin is loaded and enabled by default.
-3. Launch with `node nocto.js` or `npm start`.
+3. Make sure the user running the bot has read/write permission for the
+   directories `logs` and `persist`, unless you disable these features.
+4. Launch with `node nocto.js` or `npm start`.
 
 ## Available plugins
 

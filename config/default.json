@@ -55,6 +55,15 @@
         }
     },
 
+    "services": {
+        // List of optional bot components provided to plugins
+        // Plugins may depend on some of these, and services may depend on
+        // other services
+        "register": [
+            "persist"
+        ]
+    },
+
     // See https://github.com/nomiddlename/log4js-node#configuration
     "log": {
         "appenders": [
