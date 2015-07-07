@@ -4,33 +4,38 @@ var path = require('path');
 var irc = require('irc');
 var Q = require('q');
 
-var api, config, log;
+var api, config, log, persist, storage;
 var handlers = {};
 var clients = [], inboundRoutes = [], outboundRoutes = [];
 
-module.exports = function loadPlugin(resources) {
+module.exports = function loadPlugin(resources, services) {
     log = resources.log;
     api = resources.api;
     config = resources.config;
+    persist = services.persist;
     return handlers;
 };
 
 handlers.enable = function(cb) {
-    Q.fcall(function() {
-        Object.keys(config.servers).forEach(function(serverName) {
-            var serverConfig = config.servers[serverName];
-            var client = new irc.Client(
-                serverConfig.host, serverConfig.nick,
-                extend(serverConfig.options, {
-                    stripColors: true,
-                    channels: Object.keys(serverConfig.channels),
-                    autoConnect: false
-                })
-            );
-            makeRoutes(client, serverName, serverConfig);
-            setupClient(client, serverName, serverConfig);
-            clients.push(client);
-            client.connect(config.ircRetryCount);
+    persist.load().then(function(result) {
+        storage = result;
+        storage.telegramAliases = storage.telegramAliases || {};
+        return Q.fcall(function() {
+            Object.keys(config.servers).forEach(function(serverName) {
+                var serverConfig = config.servers[serverName];
+                var client = new irc.Client(
+                    serverConfig.host, serverConfig.nick,
+                    extend(serverConfig.options, {
+                        stripColors: true,
+                        channels: Object.keys(serverConfig.channels),
+                        autoConnect: false
+                    })
+                );
+                makeRoutes(client, serverName, serverConfig);
+                setupClient(client, serverName, serverConfig);
+                clients.push(client);
+                client.connect(config.ircRetryCount);
+            });
         });
     }).nodeify(cb);
 };
@@ -69,6 +74,10 @@ handlers.handleMessage = function(message, meta) {
                     command.argumentTokens.slice(1, 3).join(' ')
                 );
             }
+            return;
+        case 'setalias':
+            setAlias(message.chat.id, message.from.id,
+                     command.argumentTokens[0]);
             return;
         case '#':
         case '/':
@@ -235,18 +244,20 @@ function formatIrcEvent(event, ownUser) {
     if (config.ircEvents.indexOf(event. type) === -1) {
         return;
     }
+
     if (event.reason) {
         event.reason = event.reason.replace('"', '');
     } else {
         event.reason = '';
     }
+    var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
+
     switch (event.type) {
     case 'message':
     case 'notice':
-        var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
         return '<' + event.from + userSuffix + '> ' + event.text;
     case 'action':
-        return '** ' + event.from + '@' + event.channel + ' ' + event.text;
+        return '** ' + event.from + userSuffix + ' ' + event.text;
     case 'join':
         if (event.user === ownUser) {
             return 'I am now attached to channel ' + event.channel;
@@ -290,7 +301,9 @@ function formatTelegramEvent(message) {
     if (!message.text) {
         return lines;
     }
-    var username = message.from.username || message.from.first_name;
+    var username = storage.telegramAliases[message.from.id] ||
+                   message.from.username ||
+                   message.from.first_name;
     message.text.replace("\r", '').split("\n").forEach(function(line) {
         lines.push('<' + irc.colors.wrap(colorForUser(username),
                    irc.colors.wrap('bold', username)) +
@@ -316,6 +329,14 @@ function sendWhoisRequest(telegramGroup, ircChannel, ircUser) {
             });
         });
     }
+}
+
+function setAlias(telegramGroup, telegramUser, alias) {
+    storage.telegramAliases[telegramUser] = alias;
+    api.sendMessage({
+        chat_id: telegramGroup,
+        text: 'Alias set to "' + alias + '".'
+    });
 }
 
 function findClientForChannel(channel, telegramGroup) {
