@@ -12,6 +12,34 @@ var pjson = require('./package.json');
 log4js.configure(config.get('log'));
 var log = log4js.getLogger('nocto');
 
+var heapdumpSetting = config.get('debug.heapdump');
+if (heapdumpSetting) {
+    var heapdump = require('heapdump');
+    try {
+        fs.mkdirSync('./heapdump');
+    } catch (error) {
+        if (error.code !== 'EEXIST') {
+            throw error;
+        }
+    }
+    var makeHeapdump = function() {
+        heapdump.writeSnapshot('./heapdump/' + Date.now() + '.heapsnapshot',
+            function(err, filename) {
+                if (err) {
+                    log.error('Heap dump failed:', err);
+                } else {
+                    log.debug('Heap dump written to', filename);
+                }
+            });
+    };
+    // Snapshot right now
+    makeHeapdump();
+    // And after init has probably finished
+    setTimeout(makeHeapdump, 10000);
+    // And according to period setting
+    setInterval(makeHeapdump, heapdumpSetting * 1000);
+}
+
 log.info('Initializing nocto/' + pjson.version);
 log.info('[1] Setup components and hooks');
 

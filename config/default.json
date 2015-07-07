@@ -34,9 +34,9 @@
         // Array of prefix strings to recognize as a command message
         "commandPrefix": [ "/" ]
     },
-    
+
     "plugins": {
-        // List of registered plugins, from high to low message processing priority
+        // List of registered plugins, from high to low processing priority
         "register": [
             "echo"
         ],
@@ -54,12 +54,7 @@
             }        
         }
     },
-    
-    // Process return codes for various conditions
-    "exitCodes": {
-        "botStartFailed": 3
-    },
-    
+
     // See https://github.com/nomiddlename/log4js-node#configuration
     "log": {
         "appenders": [
@@ -79,7 +74,16 @@
             "tgbot": "ALL",
             "plugins": "ALL"
         }
-    }
+    },
 
+    // Process return codes for various conditions
+    "exitCodes": {
+        "botStartFailed": 3
+    },
+
+    "debug": {
+        // If not 0, take a heap snapshot every x seconds with heapdump module
+        "heapdump": 0
+    }
     
 }
