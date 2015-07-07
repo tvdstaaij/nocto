@@ -39,6 +39,17 @@ if (heapdumpSetting) {
     // And according to period setting
     setInterval(makeHeapdump, heapdumpSetting * 1000);
 }
+var memlogSetting = config.get('debug.memlog');
+if (memlogSetting) {
+    setInterval(function() {
+        var memoryUsage = process.memoryUsage();
+        Object.keys(memoryUsage).forEach(function(stat) {
+            memoryUsage[stat] = (memoryUsage[stat] / 1024 / 1024)
+                                .toFixed(1) + 'MiB';
+        });
+        log.debug('Memory usage:', memoryUsage);
+    }, memlogSetting * 1000);
+}
 
 log.info('Initializing nocto/' + pjson.version);
 log.info('[1] Setup components and hooks');

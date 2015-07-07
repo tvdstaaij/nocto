@@ -83,7 +83,9 @@
 
     "debug": {
         // If not 0, take a heap snapshot every x seconds with heapdump module
-        "heapdump": 0
+        "heapdump": 0,
+        // If not 0, log memory usage statistics every x seconds
+        "memlog": 0
     }
     
 }
