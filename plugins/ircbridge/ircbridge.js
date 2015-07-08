@@ -86,6 +86,7 @@ handlers.handleMessage = function(message, meta) {
             return;
         case '#':
         case '/':
+        case 'c':
             return;
         }
     }
