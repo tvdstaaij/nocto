@@ -41,7 +41,7 @@
     // IRC event types to relay
     "ircEvents": [
         "message", "notice", "action", "join", "part", "quit", "kick", "nick",
-        "topic", "names"
+        "topic", "names", "mode"
     ],
     // Color Telegram usernames with a user-configurable color
     "ircColoredNames": true,

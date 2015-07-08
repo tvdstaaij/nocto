@@ -178,6 +178,18 @@ function setupClient(client, serverName, serverConfig) {
             type: 'names', channel: channel, users: nicks
         }, client.nick);
     });
+    client.on('+mode', function (channel, by, mode, argument) {
+        relayIrcEvent({
+            type: 'mode', sign: '+', channel: channel, by: by, mode: mode,
+            argument: argument
+        }, client.nick);
+    });
+    client.on('-mode', function (channel, by, mode, argument) {
+        relayIrcEvent({
+            type: 'mode', sign: '-', channel: channel, by: by, mode: mode,
+            argument: argument
+        }, client.nick);
+    });
 }
 
 function relayIrcEvent(event, ownUser) {
@@ -242,7 +254,7 @@ function relayTelegramEvent(event) {
 }
 
 function formatIrcEvent(event, ownUser) {
-    if (config.ircEvents.indexOf(event. type) === -1) {
+    if (config.ircEvents.indexOf(event.type) === -1) {
         return;
     }
 
@@ -292,8 +304,12 @@ function formatIrcEvent(event, ownUser) {
                 Object.keys(event.users).filter(function(user) {
                     return user !== ownUser;
                 }).join(', ');
+    case 'mode':
+        var argument = event.argument ? ' ' + event.argument : '';
+        return event.by + ' applied mode ' + event.sign + event.mode +
+               argument + ' to channel ' + event.channel;
     default:
-        log.debug('received ' + event.type);
+        log.debug('received unknown irc event ' + event.type);
     }
 }
 
