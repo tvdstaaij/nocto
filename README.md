@@ -18,12 +18,35 @@ This project is under heavy development; consider it a buggy alpha version.
    directories `logs` and `persist`, unless you disable these features.
 4. Launch with `node nocto.js` or `npm start`.
 
+## Dependencies
+
+External dependencies on node modules are listed in the `package.json` and can
+be automatically resolved with `npm install`. Dependencies listed as optional
+are only necessary for certain services (see below), which are enabled by
+default but can be disabled in the bot configuration. Plugins have their own
+dependencies specified in a package.json and require an `npm install` in their
+plugin directory before loading them for the first time.
+
+However, the bot also has internal component dependencies. The bot provides a
+set of modules called 'services' which are more tightly coupled to the bot than
+ plugins. They generally provide some functionality to plugins and/or other
+ components, for example a persistent data store.
+
+Services can be disabled to strip the bot of some weight if you don't need them.
+The following applies regarding dependencies:
+
+* Plugins can depend on certain services.
+* Services can depend on certain other services (e.g. plugin manager service
+  requiring persistent storage for keeping track of enabled plugins).
+* Plugins do not depend on other plugins.
+
 ## Available plugins
 
 * `echo`: Simple example plugin implementing an `/echo <message>` command.
 * `ircbridge`: Allows you to link IRC channels and Telegram groups, relaying
   messages and events in one or both directions. Supports multiple IRC servers
   and bridge routes.
+* `trace`: Logs properties of every incoming message to ease plugin development. 
 
 Currently, the only way to enable plugins is to add them to the `autoEnabled`
 list in the bot configuration. In the future it will be possible to
