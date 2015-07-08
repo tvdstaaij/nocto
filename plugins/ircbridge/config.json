@@ -43,8 +43,10 @@
         "message", "notice", "action", "join", "part", "quit", "kick", "nick",
         "topic", "names"
     ],
-    // Generate an IRC color for every Telegram user
+    // Color Telegram usernames with a user-configurable color
     "ircColoredNames": true,
+    // Make Telegram username bold for clarity
+    "ircBoldNames": true,
     // Adjust this to shuffle the colors for the ircColoredNames feature
     "ircColorHashBase": 0,
     // Whether to add "@#chan" to IRC usernames in messages relayed to Telegram

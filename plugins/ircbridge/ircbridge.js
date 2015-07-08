@@ -20,6 +20,7 @@ handlers.enable = function(cb) {
     persist.load().then(function(result) {
         storage = result;
         storage.telegramAliases = storage.telegramAliases || {};
+        storage.telegramColors = storage.telegramColors || {};
         return Q.fcall(function() {
             Object.keys(config.servers).forEach(function(serverName) {
                 var serverConfig = config.servers[serverName];
@@ -79,6 +80,10 @@ handlers.handleMessage = function(message, meta) {
             setAlias(message.chat.id, message.from.id,
                      command.argumentTokens[0]);
             return;
+        case 'setcolor':
+            setColor(message.chat.id, message.from.id,
+                     command.argumentTokens[0].toLowerCase());
+            return;
         case '#':
         case '/':
             return;
@@ -122,10 +127,6 @@ function setupClient(client, serverName, serverConfig) {
     });
     client.on('registered', function() {
         log.trace('Sucessfully connected to IRC server ' + serverName);
-    });
-    client.on('ctcp', function(from, to, text) {
-        log.trace('Received CTCP ' + text + ' from IRC user ' + from +
-                  '@' + serverName)
     });
     client.on('message#', function(nick, to, text) {
         relayIrcEvent({
@@ -305,9 +306,16 @@ function formatTelegramEvent(message) {
                    message.from.username ||
                    message.from.first_name;
     message.text.replace("\r", '').split("\n").forEach(function(line) {
-        lines.push('<' + irc.colors.wrap(colorForUser(username),
-                   irc.colors.wrap('bold', username)) +
-                   config.telegramUserSuffix + '> ' + line);
+        if (config.ircBoldNames) {
+            username = irc.colors.wrap('bold', username);
+        }
+        if (config.ircColoredNames) {
+            var color = storage.telegramColors[message.from.id];
+            if (color) {
+                username = irc.colors.wrap(color, username);
+            }
+        }
+        lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
     });
     return lines;
 }
@@ -339,6 +347,24 @@ function setAlias(telegramGroup, telegramUser, alias) {
     });
 }
 
+function setColor(telegramGroup, telegramUser, color) {
+    var colors = Object.keys(irc.colors.codes).filter(function(color) {
+        return (color !== 'bold' && color !== 'underline');
+    });
+    if (colors.indexOf(color) === -1) {
+        api.sendMessage({
+            chat_id: telegramGroup,
+            text: 'Available colors: ' + colors.sort().join(', ')
+        });
+        return;
+    }
+    storage.telegramColors[telegramUser] = color;
+    api.sendMessage({
+        chat_id: telegramGroup,
+        text: 'Nickname color set to "' + color + '".'
+    });
+}
+
 function findClientForChannel(channel, telegramGroup) {
     var client = false;
     var channelFound = inboundRoutes.some(function(route) {
@@ -363,19 +389,4 @@ function isInChannel(channel, channels) {
     return channels.some(function(element) {
         return element.toLowerCase() === channel.toLowerCase();
     });
-}
-
-function colorForUser(user) {
-    if (!config.ircColoredNames) {
-        return 'reset';
-    }
-    var hash = config.ircColorHashBase;
-    for (var i = 0; i < user.length; i++) {
-        hash += user.charCodeAt(i);
-    }
-    var colors = Object.keys(irc.colors.codes).filter(function(color) {
-        return (color !== 'white' && color !== 'black' && color !== 'reset' &&
-                color !== 'bold' && color !== 'underline');
-    });
-    return colors[hash % colors.length];
 }
