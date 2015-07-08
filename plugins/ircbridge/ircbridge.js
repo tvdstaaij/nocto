@@ -82,7 +82,7 @@ handlers.handleMessage = function(message, meta) {
             return;
         case 'setcolor':
             setColor(message.chat.id, message.from.id,
-                     command.argumentTokens[0].toLowerCase());
+                     command.argumentTokens[0]);
             return;
         case '#':
         case '/':
@@ -348,6 +348,7 @@ function setAlias(telegramGroup, telegramUser, alias) {
 }
 
 function setColor(telegramGroup, telegramUser, color) {
+    color = color ? color.toLowerCase() : '';
     var colors = Object.keys(irc.colors.codes).filter(function(color) {
         return (color !== 'bold' && color !== 'underline');
     });
