@@ -1,6 +1,7 @@
 ## Specific wishlist for the short term
 
 * Timeouts on critical plugin operations (load/enable/disable)
+* Retry queue for API calls
 * Handle bot-specific command addressing (i.e. /command@SomeBot)
 * Dynamic plugin control with reload support
 * Properly test all API methods with various parameters
