@@ -1,6 +1,6 @@
 {
     "name": "ircbridge",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "main": "ircbridge.js",
     "dependencies": {
         "irc": "Timer/node-irc#c4e5f8154d34a727f8ccfacc92c14c88dccea8a6"
