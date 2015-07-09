@@ -128,7 +128,7 @@ getMe() // Execute step 1
 .then(function(promises) { // Handle step 2 result
     promises.forEach(function(promise, index) {
         var plugin = pluginLoadList[index];
-        if (promise.state == 'fulfilled') {
+        if (promise.state === 'fulfilled') {
             log.info('Loaded plugin ' + plugin);
         } else {
             log.error('Failed to load plugin ' + plugin + ':',
@@ -140,7 +140,7 @@ getMe() // Execute step 1
 .then(function(promises) { // Handle step 3 result
     promises.forEach(function(promise, index) {
         var plugin = pluginEnableList[index];
-        if (promise.state == 'fulfilled') {
+        if (promise.state === 'fulfilled') {
             log.info('Automatically enabled plugin ' + promise.value.name);
         } else {
             log.error('Failed to automatically enable plugin ' + plugin + ':',
