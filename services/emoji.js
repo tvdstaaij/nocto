@@ -9,7 +9,7 @@ var properties = {data: emojiData};
 var methods = {};
 
 methods.injectReal = function(text) {
-    return text.replace(/:([a-z_]+):/ig, function(match, shortName) {
+    return text.replace(/:([a-z0-9_+\-]+):/ig, function(match, shortName) {
         var char = emojiData.from_short_name(shortName);
         if (char) {
             return char.render();
