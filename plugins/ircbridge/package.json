@@ -3,6 +3,6 @@
     "version": "1.0.0",
     "main": "ircbridge.js",
     "dependencies": {
-        "irc": "~0.3.12"
+        "irc": "Timer/node-irc#c4e5f8154d34a727f8ccfacc92c14c88dccea8a6"
     }
 }
