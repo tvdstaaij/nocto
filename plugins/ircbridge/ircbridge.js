@@ -4,7 +4,7 @@ var path = require('path');
 var irc = require('irc');
 var Q = require('q');
 
-var api, config, log, persist, storage;
+var api, config, log, persist, storage, emoji;
 var handlers = {};
 var clients = [], inboundRoutes = [], outboundRoutes = [];
 
@@ -13,6 +13,7 @@ module.exports = function loadPlugin(resources, services) {
     api = resources.api;
     config = resources.config;
     persist = services.persist;
+    emoji = services.emoji;
     return handlers;
 };
 
@@ -264,6 +265,9 @@ function formatIrcEvent(event, ownUser) {
     } else {
         event.reason = '';
     }
+    if (event.text && config.ircEncodeEmoji) {
+        event.text = emoji.injectReal(event.text);
+    }
     var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
 
     switch (event.type) {
@@ -318,6 +322,9 @@ function formatTelegramEvent(message) {
     var lines = [];
     if (!message.text) {
         return lines;
+    }
+    if (config.ircDecodeEmoji) {
+        message.text = emoji.injectShortNames(message.text);
     }
     var username = storage.telegramAliases[message.from.id] ||
                    message.from.username ||

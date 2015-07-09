@@ -51,6 +51,11 @@
     "ircColorHashBase": 0,
     // Whether to add "@#chan" to IRC usernames in messages relayed to Telegram
     "ircUserSuffix": true,
+    // Translate emoji identifiers (http://emoji-cheat-sheet.com) to real emoji
+    // for the IRC -> Telegram direction
+    "ircEncodeEmoji": true,
+    // Relay Telegram emoji as identifiers (http://emoji-cheat-sheet.com) to IRC
+    "ircDecodeEmoji": true,
     // Reason to use with IRC's QUIT command when shutting down
     "ircQuitReason": "Shutting down",
     // Telegram user suffix used in the same fashion as for channels, e.g. "@tg"
