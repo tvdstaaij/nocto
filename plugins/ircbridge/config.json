@@ -17,6 +17,10 @@
                 "floodProtectionDelay": 500,
                 "encoding": "UTF-8"
             },
+            // Send these raw IRC commands after connecting
+            "autoPerform": [
+                ["PRIVMSG", "NickServ", "identify password"]
+            ],
             // Add one or more Telegram <-> IRC routes here
             // You can use the trace plugin to discover Telegram group IDs
             "channels": {

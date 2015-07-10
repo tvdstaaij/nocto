@@ -129,6 +129,9 @@ function setupClient(client, serverName, serverConfig) {
     });
     client.on('registered', function() {
         log.trace('Sucessfully connected to IRC server ' + serverName);
+        serverConfig.autoPerform.forEach(function(command) {
+            irc.Client.prototype.send.apply(client, command);
+        });
     });
     client.on('message#', function(nick, to, text) {
         relayIrcEvent({
