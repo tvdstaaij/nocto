@@ -320,27 +320,37 @@ function formatIrcEvent(event, ownUser) {
 
 function formatTelegramEvent(message) {
     var lines = [];
-    if (!message.text) {
-        return lines;
-    }
-    if (config.ircDecodeEmoji) {
-        message.text = emoji.injectShortNames(message.text);
-    }
-    var username = storage.telegramAliases[message.from.id] ||
-                   message.from.username ||
-                   message.from.first_name;
-    message.text.replace("\r", '').split("\n").forEach(function(line) {
-        if (config.ircBoldNames) {
-            username = irc.colors.wrap('bold', username);
+    var location = message.location;
+    var contact = message.contact;
+    var text = message.text;
+    if (location) {
+        lines.push('[Location] http://maps.google.com/maps?t=m&q=loc:' +
+                   location.latitude + ',' + location.longitude);
+    } else if (contact) {
+        var name = contact.first_name + (contact.last_name ?
+                   ' ' + contact.last_name : '');
+        var number = '+' + contact.phone_number;
+        lines.push('[Contact] ' + name + ', ' + number);
+    } else if (text) {
+        if (config.ircDecodeEmoji) {
+            text = emoji.injectShortNames(text);
         }
-        if (config.ircColoredNames) {
-            var color = storage.telegramColors[message.from.id];
-            if (color) {
-                username = irc.colors.wrap(color, username);
+        var username = storage.telegramAliases[message.from.id] ||
+            message.from.username ||
+            message.from.first_name;
+        text.replace("\r", '').split("\n").forEach(function (line) {
+            if (config.ircBoldNames) {
+                username = irc.colors.wrap('bold', username);
             }
-        }
-        lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
-    });
+            if (config.ircColoredNames) {
+                var color = storage.telegramColors[message.from.id];
+                if (color) {
+                    username = irc.colors.wrap(color, username);
+                }
+            }
+            lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
+        });
+    }
     return lines;
 }
 
