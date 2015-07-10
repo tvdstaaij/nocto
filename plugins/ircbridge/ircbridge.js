@@ -323,21 +323,22 @@ function formatTelegramEvent(message) {
     var location = message.location;
     var contact = message.contact;
     var text = message.text;
+    var username = storage.telegramAliases[message.from.id] ||
+        message.from.username ||
+        message.from.first_name;
     if (location) {
-        lines.push('[Location] http://maps.google.com/maps?t=m&q=loc:' +
+        lines.push(username +
+                   ' sent location: http://maps.google.com/maps?t=m&q=loc:' +
                    location.latitude + ',' + location.longitude);
     } else if (contact) {
         var name = contact.first_name + (contact.last_name ?
                    ' ' + contact.last_name : '');
         var number = '+' + contact.phone_number;
-        lines.push('[Contact] ' + name + ', ' + number);
+        lines.push(username + ' sent contact: ' + name + ', ' + number);
     } else if (text) {
         if (config.ircDecodeEmoji) {
             text = emoji.injectShortNames(text);
         }
-        var username = storage.telegramAliases[message.from.id] ||
-            message.from.username ||
-            message.from.first_name;
         text.replace("\r", '').split("\n").forEach(function (line) {
             if (config.ircBoldNames) {
                 username = irc.colors.wrap('bold', username);
