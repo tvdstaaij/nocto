@@ -269,7 +269,7 @@ function formatIrcEvent(event, ownUser) {
         event.reason = '';
     }
     if (event.text && config.ircEncodeEmoji) {
-        event.text = emoji.injectReal(event.text);
+        event.text = emoji.namesToUnicode(event.text);
     }
     var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
 
@@ -340,7 +340,7 @@ function formatTelegramEvent(message) {
         lines.push(username + ' sent contact: ' + name + ', ' + number);
     } else if (text) {
         if (config.ircDecodeEmoji) {
-            text = emoji.injectShortNames(text);
+            text = emoji.unicodeToNames(text);
         }
         text.replace("\r", '').split("\n").forEach(function (line) {
             if (config.ircBoldNames) {
