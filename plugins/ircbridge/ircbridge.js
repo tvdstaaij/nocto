@@ -67,8 +67,11 @@ handlers.handleMessage = function(message, meta) {
         return;
     }
 
-    if (meta.command) {
-        var command = meta.command;
+    var relayOptions = {
+        decodeEmoji: config.ircDecodeEmoji
+    };
+    var command = meta.command;
+    if (command) {
         switch (command.name) {
         case 'names':
             if (command.argumentTokens.length) {
@@ -92,11 +95,20 @@ handlers.handleMessage = function(message, meta) {
                      command.argumentTokens[0]);
             return;
         case 'c':
-            return;
+            if (config.telegramComments) {
+                return;
+            }
+            break;
+        case 'e':
+        case 'emo':
+        case 'emoji':
+            relayOptions.decodeEmoji = false;
+            message.text = command.argument;
+            break;
         }
     }
 
-    relayTelegramEvent(message);
+    relayTelegramEvent(message, relayOptions);
 };
 
 function makeRoutes(client, serverName, serverConfig) {
@@ -242,11 +254,11 @@ function relayIrcEvent(event, ownUser) {
     });
 }
 
-function relayTelegramEvent(event) {
+function relayTelegramEvent(event, options) {
     var group = event.chat.id;
     outboundRoutes.forEach(function(route) {
-        if (group == route.from) {
-            var relayText = formatTelegramEvent(event);
+        if (group === route.from) {
+            var relayText = formatTelegramEvent(event, options);
             if (relayText) {
                 relayText.slice(0, config.telegramLineLimit)
                     .forEach(function (line) {
@@ -275,6 +287,9 @@ function formatIrcEvent(event, ownUser) {
     }
     if (event.text && config.ircEncodeEmoji) {
         event.text = emoji.namesToUnicode(event.text);
+    }
+    if (event.text && config.emojiSkinVariants) {
+        event.text = emoji.applySkinVariants(event.text);
     }
     var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
 
@@ -326,7 +341,8 @@ function formatIrcEvent(event, ownUser) {
     }
 }
 
-function formatTelegramEvent(message) {
+function formatTelegramEvent(message, options) {
+    options = options || {};
     var lines = [];
     var location = message.location;
     var contact = message.contact;
@@ -344,8 +360,10 @@ function formatTelegramEvent(message) {
         var number = '+' + contact.phone_number;
         lines.push(username + ' sent contact: ' + name + ', ' + number);
     } else if (text) {
-        if (config.ircDecodeEmoji) {
+        if (options.decodeEmoji) {
             text = emoji.unicodeToNames(text);
+        } else if (config.emojiSkinVariants) {
+            text = emoji.applySkinVariants(text);
         }
         text.replace("\r", '').split("\n").forEach(function (line) {
             if (config.ircBoldNames) {

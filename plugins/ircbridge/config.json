@@ -64,6 +64,10 @@
     "ircQuitReason": "Shutting down",
     // Telegram user suffix used in the same fashion as for channels, e.g. "@tg"
     "telegramUserSuffix": "",
+    // Do not relay Telegram messages starting with # or // or the /c command
+    "telegramComments": true,
     // Max number of lines per telegram message to relay (anti-flood)
-    "telegramLineLimit": 5
+    "telegramLineLimit": 5,
+    // Facilitate textual sending of variant emoji with a number suffix (#n)
+    "emojiSkinVariants": true
 }
