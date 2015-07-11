@@ -61,6 +61,12 @@ handlers.handleMessage = function(message, meta) {
     if (!meta.fresh || meta.private) {
         return;
     }
+    var text = message.text;
+    // Don't relay "comment" messages starting with // or # or variants
+    if (text && /^(#|\/\s|[#/]{2,})/.test(text)) {
+        return;
+    }
+
     if (meta.command) {
         var command = meta.command;
         switch (command.name) {
@@ -85,12 +91,11 @@ handlers.handleMessage = function(message, meta) {
             setColor(message.chat.id, message.from.id,
                      command.argumentTokens[0]);
             return;
-        case '#':
-        case '/':
         case 'c':
             return;
         }
     }
+
     relayTelegramEvent(message);
 };
 
