@@ -5,7 +5,7 @@ var irc = require('irc');
 var Q = require('q');
 
 var api, config, log, persist, storage, emoji;
-var handlers = {};
+var handlers = {}, groupScopeMap = {};
 var clients = [], inboundRoutes = [], outboundRoutes = [];
 
 module.exports = function loadPlugin(resources, services) {
@@ -132,6 +132,8 @@ function makeRoutes(client, serverName, serverConfig) {
                     from: channelName,
                     to: groupId
                 });
+                groupScopeMap[groupId] = groupScopeMap[groupId] || [];
+                groupScopeMap[groupId].push(channelName.toLowerCase());
             });
         }
     });
@@ -223,11 +225,31 @@ function relayIrcEvent(event, ownUser) {
     } else {
         return;
     }
+    var relayedTo = [];
     inboundRoutes.forEach(function(route) {
+        var eventCopy = extend({}, event);
+        // Ignore if not relevant to this route
         if (!isInChannel(route.from, channels)) {
             return;
         }
-        var relayText = formatIrcEvent(event, ownUser);
+        // Don't leak multichannel events (nick/quit) leak outside group scope
+        var groupScope = groupScopeMap[route.to];
+        if (event.channels) {
+            eventCopy.channels = event.channels.filter(function(channel) {
+                return (groupScope && groupScope.length &&
+                        groupScope.indexOf(channel.toLowerCase()) !== -1);
+            });
+        }
+        if (event.channels && !eventCopy.channels) {
+            return;
+        }
+        // Prevent multichannel events from being sent twice to the same group
+        if (relayedTo.indexOf(route.to) !== -1) {
+            return;
+        }
+        relayedTo.push(route.to);
+
+        var relayText = formatIrcEvent(eventCopy, ownUser);
         if (relayText) {
             api.sendMessage({
                 chat_id: route.to,
@@ -337,7 +359,7 @@ function formatIrcEvent(event, ownUser) {
         return event.by + ' applied mode ' + event.sign + event.mode +
                argument + ' to channel ' + event.channel;
     default:
-        log.debug('received unknown irc event ' + event.type);
+        log.debug('Received unknown irc event ' + event.type);
     }
 }
 
