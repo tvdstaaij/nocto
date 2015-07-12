@@ -4,19 +4,22 @@ Nocto is a Node.js Telegram bot application with an asynchronous plugin-based
 architecture, using the official bot API. It relies on long polling to be
 rapidly notified of new messages.
 
-This project is under heavy development; consider it a buggy alpha version.
+This project is under heavy development; consider it a useable alpha version.
 
 ## Quickstart
 
-1. Resolve core bot dependencies with `npm install`.
-2. Resolve dependencies for any plugins you wish to use (`npm install` in their
+1. Make sure you have a recent version of Node.js (0.12 is officially supported,
+   0.11.3+ is untested but probably works, 0.10 is too old for some submodules).
+2. Resolve core bot dependencies with `npm install`.
+3. Resolve dependencies for any plugins you wish to use (`npm install` in their
    directory under `plugins`).
-2. Create a `config/local.json`, overriding values from `config/default.json`
+4. Create a `config/local.json`, overriding values from `config/default.json`
    where desired. Specifying `api.token` is required. Note that only the `echo`
    plugin is loaded and enabled by default.
-3. Make sure the user running the bot has read/write permission for the
+5. Make sure the user running the bot has read/write permission for the
    directories `logs` and `persist`, unless you disable these features.
-4. Launch with `node nocto.js` or `npm start`.
+6. Launch with `node nocto.js` or `npm start`. Note: in some operating systems
+   the `node` executable is called `nodejs` instead.
 
 ## Dependencies
 
@@ -58,8 +61,8 @@ Plugins have their own directory in `plugins` and at least an executable file
 `plugins/my_plugin/my_plugin.js`. They can optionally have a `config.json`
 and/or an NPM `package.json` in the same directory. For now, reference the
 annotated `plugins/echo` as an example plugin (although this is not the only
-possible style for writing plugins). Your plugin can have its own dependencies
-and submodules if necessary.
+possible style for writing plugins). Your plugin can have its own dependencies, 
+submodules and data files if necessary.
 
 ## Logging
 
