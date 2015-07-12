@@ -5,8 +5,8 @@ var irc = require('irc');
 var Q = require('q');
 
 var api, config, log, persist, storage, emoji;
-var handlers = {}, groupScopeMap = {};
-var clients = [], inboundRoutes = [], outboundRoutes = [];
+var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
+var inboundRoutes = [], outboundRoutes = [], copyRoutes = [];
 
 module.exports = function loadPlugin(resources, services) {
     log = resources.log;
@@ -33,25 +33,33 @@ handlers.enable = function(cb) {
                         autoConnect: false
                     })
                 );
-                makeRoutes(client, serverName, serverConfig);
+                makeTelegramRoutes(client, serverName, serverConfig);
                 setupClient(client, serverName, serverConfig);
-                clients.push(client);
+                clients[serverName] = client;
                 client.connect(config.ircRetryCount);
+            });
+            Object.keys(clients).forEach(function(serverName) {
+                makeCopyRoutes(clients[serverName], serverName,
+                               config.servers[serverName]);
             });
         });
     }).nodeify(cb);
 };
 
 handlers.disable = function(cb) {
-    if (clients.length) {
-        log.trace('Disconnecting from ' + clients.length + ' IRC servers');
+    var serverNames = Object.keys(clients);
+    if (serverNames.length) {
+        log.trace('Disconnecting from ' + serverNames.length + ' IRC servers');
     }
-    clients.forEach(function(client) {
-       client.disconnect(config.ircQuitReason);
+    serverNames.forEach(function(serverName) {
+       clients[serverName].disconnect(config.ircQuitReason);
     });
     inboundRoutes.length = 0;
     outboundRoutes.length = 0;
-    clients.length = 0;
+    copyRoutes.length = 0;
+    clients = {};
+    groupScopeMap = {};
+    channelScopeMap = {};
     process.nextTick(function() {
         cb(null, true);
     });
@@ -111,7 +119,7 @@ handlers.handleMessage = function(message, meta) {
     relayTelegramEvent(message, relayOptions);
 };
 
-function makeRoutes(client, serverName, serverConfig) {
+function makeTelegramRoutes(client, serverName, serverConfig) {
     Object.keys(serverConfig.channels).forEach(function(channelName) {
         var bridgeConfig = serverConfig.channels[channelName];
         if (bridgeConfig && bridgeConfig.relayFrom) {
@@ -139,6 +147,39 @@ function makeRoutes(client, serverName, serverConfig) {
     });
 }
 
+function makeCopyRoutes(client, serverName, serverConfig) {
+    Object.keys(serverConfig.channels).forEach(function(channelName) {
+        var bridgeConfig = serverConfig.channels[channelName];
+        if (bridgeConfig && bridgeConfig.copyTo) {
+            bridgeConfig.copyTo.forEach(function (target) {
+                var otherClient = clients[target.server];
+                if (!otherClient) {
+                    log.warn('Unknown server ' + target.server + ', skipping' +
+                        ' copy route to ' + target.channel);
+                    return;
+                }
+                copyRoutes.push({
+                    from: {
+                        client: client,
+                        serverName: serverName,
+                        channel: channelName
+                    },
+                    to: {
+                        client: otherClient,
+                        serverName: target.server,
+                        channel: target.channel
+                    }
+                });
+                var channelId = (target.server + target.channel).toLowerCase();
+                channelScopeMap[channelId] = channelScopeMap[channelId] || [];
+                channelScopeMap[channelId].push(
+                    (serverName + channelName).toLowerCase()
+                );
+            });
+        }
+    });
+}
+
 function setupClient(client, serverName, serverConfig) {
     client.on('error', function(error) {
         log.debug('IRC server error from ' + serverName + ':', error);
@@ -155,68 +196,68 @@ function setupClient(client, serverName, serverConfig) {
     client.on('message#', function(nick, to, text) {
         relayIrcEvent({
             type: 'message', channel: to, from: nick, text: text
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('notice', function(nick, to, text) {
         relayIrcEvent({
             type: 'notice', channel: to, from: nick, text: text
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('action', function (from, to, text) {
         relayIrcEvent({
             type: 'action', channel: to, from: from, text: text
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('join', function (channel, nick) {
         relayIrcEvent({
             type: 'join', channel: channel, user: nick
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('part', function (channel, nick, reason) {
         relayIrcEvent({
             type: 'part', channel: channel, user: nick, reason: reason
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('quit', function (nick, reason, channels) {
         relayIrcEvent({
             type: 'quit', channels: channels, user: nick, reason: reason
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('kick', function (channel, nick, by, reason) {
         relayIrcEvent({
             type: 'kick', channel: channel, user: nick, reason: reason, by: by
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('nick', function (oldnick, newnick, channels) {
         relayIrcEvent({
             type: 'nick', channels: channels, from: oldnick, to: newnick
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('topic', function (channel, topic, nick) {
         relayIrcEvent({
             type: 'topic', channel: channel, topic: topic, user: nick
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('names', function (channel, nicks) {
         relayIrcEvent({
             type: 'names', channel: channel, users: nicks
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('+mode', function (channel, by, mode, argument) {
         relayIrcEvent({
             type: 'mode', sign: '+', channel: channel, by: by, mode: mode,
             argument: argument
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
     client.on('-mode', function (channel, by, mode, argument) {
         relayIrcEvent({
             type: 'mode', sign: '-', channel: channel, by: by, mode: mode,
             argument: argument
-        }, client.nick);
+        }, {ownUser: client.nick, serverName: serverName});
     });
 }
 
-function relayIrcEvent(event, ownUser) {
+function relayIrcEvent(event, context) {
     var channels;
     if (event.channel) {
         channels = [event.channel];
@@ -225,11 +266,13 @@ function relayIrcEvent(event, ownUser) {
     } else {
         return;
     }
-    var relayedTo = [];
+
+    var relayedToGroups = [];
     inboundRoutes.forEach(function(route) {
         var eventCopy = extend({}, event);
         // Ignore if not relevant to this route
-        if (!isInChannel(route.from, channels)) {
+        if (route.serverName !== context.serverName ||
+            !isInChannel(route.from, channels)) {
             return;
         }
         // Don't leak multichannel events (nick/quit) leak outside group scope
@@ -244,12 +287,12 @@ function relayIrcEvent(event, ownUser) {
             return;
         }
         // Prevent multichannel events from being sent twice to the same group
-        if (relayedTo.indexOf(route.to) !== -1) {
+        if (relayedToGroups.indexOf(route.to) !== -1) {
             return;
         }
-        relayedTo.push(route.to);
+        relayedToGroups.push(route.to);
 
-        var relayText = formatIrcEvent(eventCopy, ownUser);
+        var relayText = formatIrcEvent(eventCopy, context.ownUser);
         if (relayText) {
             api.sendMessage({
                 chat_id: route.to,
@@ -274,6 +317,40 @@ function relayIrcEvent(event, ownUser) {
             });
         }
     });
+
+    var relayedToChannels = [];
+    copyRoutes.forEach(function(route) {
+        var eventCopy = extend({}, event);
+        // Ignore if not relevant to this route
+        if (route.from.serverName !== context.serverName ||
+            !isInChannel(route.from.channel, channels)) {
+            return;
+        }
+        // Prevent multichannel events from being sent twice to the same channel
+        var channelId = (route.to.serverName + route.to.channel).toLowerCase();
+        if (relayedToChannels.indexOf(channelId) !== -1) {
+            return;
+        }
+        relayedToChannels.push(channelId);
+        // Don't leak multichannel events (nick/quit) leak outside channel scope
+        var channelScope = channelScopeMap[channelId];
+        if (event.channels) {
+            eventCopy.channels = event.channels.filter(function(channel) {
+                return (channelScope && channelScope.length &&
+                        channelScope.indexOf(
+                            (context.serverName + channel).toLowerCase()
+                        ) !== -1);
+            });
+        }
+        if (event.channels && !eventCopy.channels) {
+            return;
+        }
+
+        var relayText = formatIrcEvent(eventCopy, context.ownUser, {
+            ircToIrc: true
+        });
+        route.to.client.say(route.to.channel, relayText);
+    });
 }
 
 function relayTelegramEvent(event, options) {
@@ -297,7 +374,8 @@ function relayTelegramEvent(event, options) {
     });
 }
 
-function formatIrcEvent(event, ownUser) {
+function formatIrcEvent(event, ownUser, options) {
+    options = options || {};
     if (config.ircEvents.indexOf(event.type) === -1) {
         return;
     }
@@ -307,10 +385,10 @@ function formatIrcEvent(event, ownUser) {
     } else {
         event.reason = '';
     }
-    if (event.text && config.ircEncodeEmoji) {
+    if (!options.ircToIrc && event.text && config.ircEncodeEmoji) {
         event.text = emoji.namesToUnicode(event.text);
     }
-    if (event.text && config.emojiSkinVariants) {
+    if (!options.ircToIrc && event.text && config.emojiSkinVariants) {
         event.text = emoji.applySkinVariants(event.text);
     }
     var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';

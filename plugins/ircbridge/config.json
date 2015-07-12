@@ -29,7 +29,12 @@
                     // Telegram -> IRC direction (multiple groups possible)
                     "relayFrom": [-1234567],
                     // IRC -> Telegram direction (multiple groups possible)
-                    "relayTo": [-1234567]
+                    "relayTo": [-1234567],
+                    // Bonus feature: IRC -> IRC (multiple channels possible)
+                    "copyTo": [{
+                        "server": "someotherserverid",
+                        "channel": "#someotherchannel"
+                    }]
                 }
             }
         }
