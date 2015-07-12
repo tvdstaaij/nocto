@@ -6,7 +6,7 @@ var Q = require('q');
 
 var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
-var inboundRoutes = [], outboundRoutes = [], copyRoutes = [];
+var inboundRoutes = [], outboundRoutes = [], copyRoutes = [], readyServers = [];
 
 module.exports = function loadPlugin(resources, services) {
     log = resources.log;
@@ -33,7 +33,6 @@ handlers.enable = function(cb) {
                         autoConnect: false
                     })
                 );
-                makeTelegramRoutes(client, serverName, serverConfig);
                 setupClient(client, serverName, serverConfig);
                 clients[serverName] = client;
                 client.connect(config.ircRetryCount);
@@ -192,6 +191,8 @@ function setupClient(client, serverName, serverConfig) {
         serverConfig.autoPerform.forEach(function(command) {
             irc.Client.prototype.send.apply(client, command);
         });
+        readyServers.push(serverName);
+        makeTelegramRoutes(client, serverName, serverConfig);
     });
     client.on('message#', function(nick, to, text) {
         relayIrcEvent({
@@ -321,6 +322,10 @@ function relayIrcEvent(event, context) {
     var relayedToChannels = [];
     copyRoutes.forEach(function(route) {
         var eventCopy = extend({}, event);
+        // Ignore if target not ready yet
+        if (readyServers.indexOf(route.to.serverName) === -1) {
+            return;
+        }
         // Ignore if not relevant to this route
         if (route.from.serverName !== context.serverName ||
             !isInChannel(route.from.channel, channels)) {
