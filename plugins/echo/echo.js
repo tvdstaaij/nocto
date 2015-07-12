@@ -4,14 +4,16 @@
 
 // Every plugin exports a loadPlugin function.
 // This function will be called when the plugin is (re)loaded.
-module.exports = function loadPlugin(resources) {
+module.exports = function loadPlugin(resources, services) {
 
     // The plugin is provided with a number of resources to access various
     // bot functions. You can define shorthand references like done below.
+    // Resources are always provided, services may be disabled.
     var log = resources.log; // log4js logging system
     var api = resources.api; // Telegram API call functions provided by lib/tgbot.js
     var config = resources.config; // Plugin-local static configuration (see ./config.json)
     var pjson = resources.pjson; // The data from ./package.json if it exists
+    var emoji = services.emoji; // Utility functions for working with emoji
     
     // This is a good spot for plugin-local functions, these are invisible to the
     // main system. Let's define one for optionally reversing the echoed string.    
@@ -64,7 +66,21 @@ module.exports = function loadPlugin(resources) {
             
             // Let's handle this message if it's detected as an 'echo' command.
             var command = meta.command;
-            if (command.name.toLowerCase() == 'echo') {
+            if (command.name.toLowerCase() === 'echo') {
+
+                var text = command.argument;
+
+                // Reverse the string depending on configuration
+                if (config.reverse) {
+                    text = reverse(text);
+                }
+
+                // If the emoji service is available, use it for an emoji
+                // variant generator feature
+                if (emoji) {
+                    text = emoji.applySkinVariants(text);
+                }
+
                 // Initiate an API call to echo the message back.
                 // Note that this returns immediately, the actual call is
                 // performed asynchronously.
@@ -73,8 +89,7 @@ module.exports = function loadPlugin(resources) {
                 // or sequential calls), as done below.
                 api.sendMessage({
                     chat_id: message.chat.id,
-                    text: config.reverse ?
-                          reverse(command.argument) : command.argument
+                    text: text
                 }, function(error, result) {
                     // It is also possible to use the bots central logging system
                     // with various log levels (see log4js documentation).
@@ -83,6 +98,7 @@ module.exports = function loadPlugin(resources) {
                         log.trace('[echo] Failed sending echoed message', error);
                     }
                 });
+
             }
         }
     
