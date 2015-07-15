@@ -191,8 +191,11 @@ function setupClient(client, serverName, serverConfig) {
         serverConfig.autoPerform.forEach(function(command) {
             irc.Client.prototype.send.apply(client, command);
         });
-        readyServers.push(serverName);
-        makeTelegramRoutes(client, serverName, serverConfig);
+        // If not a reconnect
+        if (readyServers.indexOf(serverName) === -1) {
+            readyServers.push(serverName);
+            makeTelegramRoutes(client, serverName, serverConfig);
+        }
     });
     client.on('message#', function(nick, to, text) {
         relayIrcEvent({
