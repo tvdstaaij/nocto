@@ -1,0 +1,8 @@
+{
+    "name": "googlesuggest",
+    "version": "0.1.0",
+    "main": "googlesuggest.js",
+    "dependencies": {
+        "xml2js": "^0.4.9"
+    }
+}

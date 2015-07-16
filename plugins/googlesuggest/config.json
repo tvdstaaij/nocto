@@ -1,0 +1,5 @@
+{
+    "requestUri": "https://suggestqueries.google.com/complete/search",
+    "userAgent": "nocto",
+    "defaultLanguage": "en"
+}
