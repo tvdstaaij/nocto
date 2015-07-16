@@ -8,8 +8,7 @@ This project is under heavy development; consider it a useable alpha version.
 
 ## Quickstart
 
-1. Make sure you have a recent version of Node.js (0.12 is officially supported,
-   0.11.3+ is untested but probably works, 0.10 is too old for some submodules).
+1. Make sure your installed Node.js version is 0.12 or higher.
 2. Resolve core bot dependencies with `npm install`.
 3. Resolve dependencies for any plugins you wish to use (`npm install` in their
    directory under `plugins`).
