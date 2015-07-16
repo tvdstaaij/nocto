@@ -19,7 +19,9 @@
         // Higher values have less overhead but Telegram seems to be forcing a cap of 20 at the moment
         "pollTimeout": 60,
         // Whether to enforce certificate validity
-        "strictSSL": true
+        "strictSSL": true,
+        // Limit on open connections with the Telegram servers
+        "maxSimultaneousConnections": 4
     },
     
     "behavior": {
