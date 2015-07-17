@@ -4,7 +4,7 @@
 
 // Every plugin exports a loadPlugin function.
 // This function will be called when the plugin is (re)loaded.
-module.exports = function loadPlugin(resources, services) {
+module.exports = function loadPlugin(resources, service) {
 
     // The plugin is provided with a number of resources to access various
     // bot functions. You can define shorthand references like done below.
@@ -13,7 +13,7 @@ module.exports = function loadPlugin(resources, services) {
     var api = resources.api; // Telegram API call functions provided by lib/tgbot.js
     var config = resources.config; // Plugin-local static configuration (see ./config.json)
     var pjson = resources.pjson; // The data from ./package.json if it exists
-    var emoji = services.emoji; // Utility functions for working with emoji
+    var emoji = service('emoji'); // Utility functions for working with emoji
     
     // This is a good spot for plugin-local functions, these are invisible to the
     // main system. Let's define one for optionally reversing the echoed string.    

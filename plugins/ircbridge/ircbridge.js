@@ -8,12 +8,12 @@ var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
 var inboundRoutes = [], outboundRoutes = [], copyRoutes = [], readyServers = [];
 
-module.exports = function loadPlugin(resources, services) {
+module.exports = function loadPlugin(resources, service) {
     log = resources.log;
     api = resources.api;
     config = resources.config;
-    persist = services.persist;
-    emoji = services.emoji;
+    persist = service('persist');
+    emoji = service('emoji');
     return handlers;
 };
 

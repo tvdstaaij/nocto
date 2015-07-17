@@ -57,13 +57,13 @@ log.info('[1] Setup components and hooks');
 botUtil.setAppRoot(__dirname);
 
 var services = {};
-config.get('services.register').forEach(function(serviceName) {
-    var service = require('./services/' + serviceName + '.js');
-    if (service.init) {
-        service.init(config, services);
+var serviceFactory = function(context, serviceName) {
+    var service = services[serviceName];
+    if (service && service.provides) {
+        return service.provides(context);
     }
-    services[serviceName] = service;
-});
+    return false;
+};
 
 var bot = new TgBot(extend(config.get('api'), {
     logCategory: 'tgbot',
@@ -71,12 +71,38 @@ var bot = new TgBot(extend(config.get('api'), {
 }));
 
 var pluginResources = {
-    log: log4js.getLogger('plugins'),
     api: bot.api
 };
 var plugins = new PluginManager(extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
-}), pluginResources, services);
+}), pluginResources, serviceFactory);
+
+var serviceResources = {
+    bot: bot,
+    plugins: plugins,
+    config: config
+};
+
+var serviceNames = config.get('services.register');
+serviceNames.forEach(function(serviceName) {
+    var service = require('./services/' + serviceName + '.js');
+    services[serviceName] = service;
+});
+serviceNames.forEach(function(serviceName) {
+    var service = services[serviceName];
+    if (service && service.init) {
+        service.init(
+        extend(serviceResources, {
+            log: log4js.getLogger(serviceName)
+        }),
+        serviceFactory.bind(
+            undefined, {
+                type: 'service',
+                name: serviceName
+            }
+        ));
+    }
+});
 
 bot.on('messageReceived', function(message, meta) {
     // This is a candidate for refactoring into a service / filter
