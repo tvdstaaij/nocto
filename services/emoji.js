@@ -1,9 +1,6 @@
 var emojiData = require('emoji-data');
 var emojiRegex = require('emoji-regex');
 var extend = require('util-extend');
-var log4js = require('log4js');
-
-var log = log4js.getLogger('services');
 
 // http://unicode.org/reports/tr51/#Subject_Emoji_Modifiers
 var skinVariantCandidates = [

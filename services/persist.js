@@ -1,13 +1,15 @@
-var log4js = require('log4js');
 var path = require('path');
 var O = require('observed');
 var store = require('store');
 var Q = require('q');
-var botUtil = require('../lib/utilities.js');
 
-var appRoot = botUtil.getAppRoot();
-var storage = store(path.join(appRoot, 'persist'));
-var log = log4js.getLogger('services');
+var appRoot, log, storage;
+
+module.exports.init = function(resources) {
+    log = resources.log;
+    appRoot = resources.app.root;
+    storage = store(path.join(appRoot, 'persist'));
+};
 
 module.exports.provides = function(context) {
     var methods = {};

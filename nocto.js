@@ -6,7 +6,6 @@ var log4js = require('log4js');
 var Q = require('q');
 var PluginManager = require('./lib/pluginmanager.js');
 var TgBot = require('./lib/tgbot.js');
-var botUtil = require('./lib/utilities.js');
 var pjson = require('./package.json');
 
 log4js.configure(config.get('log'));
@@ -56,7 +55,6 @@ var appInfo = {
     root: __dirname,
     identifier: pjson.name + '/' + pjson.version
 };
-botUtil.setAppRoot(appInfo.root);
 
 log.info('Initializing ' + appInfo.identifier);
 log.info('[1] Setup components and hooks');
