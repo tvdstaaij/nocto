@@ -3,7 +3,7 @@ var extend = require('util-extend');
 var fs = require('fs');
 var path = require('path');
 var log4js = require('log4js');
-var Q = require('q');
+var Promise = require('bluebird');
 var PluginManager = require('./lib/pluginmanager.js');
 var TgBot = require('./lib/tgbot.js');
 var pjson = require('./package.json');
@@ -123,27 +123,27 @@ bot.on('messageReceived', function(message, meta) {
 // Boot step 1: get own identity (functions as API test as well)
 function getMe() {
     log.info('[2] Contact Telegram API');
-    return bot.api.getMe({}, {cache: false});
+    return Promise.resolve(bot.api.getMe({}, {cache: false})); // Temp
 }
 
 // Boot step 2: load available plugins
 var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
     log.info('[3] Load plugins');
-    return Q.allSettled(plugins.load(pluginLoadList));
+    return Promise.settle(plugins.load(pluginLoadList));
 }
 
 // Boot step 3: enable plugins marked for auto-enable
 var pluginEnableList = config.get('plugins.autoEnabled');
 function enablePlugins() {
     log.info('[4] Auto-enable plugins');
-    return Q.allSettled(plugins.enable(pluginEnableList));
+    return Promise.settle(plugins.enable(pluginEnableList));
 }
 
 // Boot step 4: instruct bot client to start polling
 function startPoll() {
     log.info('[5] Start long polling loop');
-    return Q.fcall(bot.poll.start);
+    bot.poll.start();
 }
 
 getMe() // Execute step 1
@@ -158,11 +158,11 @@ getMe() // Execute step 1
 .then(function(promises) { // Handle step 2 result
     promises.forEach(function(promise, index) {
         var plugin = pluginLoadList[index];
-        if (promise.state === 'fulfilled') {
+        if (promise.isFulfilled()) {
             log.info('Loaded plugin ' + plugin);
         } else {
             log.error('Failed to load plugin ' + plugin + ':',
-                      promise.reason);
+                      promise.reason());
         }
     });
     return enablePlugins(); // Execute step 3
@@ -170,16 +170,15 @@ getMe() // Execute step 1
 .then(function(promises) { // Handle step 3 result
     promises.forEach(function(promise, index) {
         var plugin = pluginEnableList[index];
-        if (promise.state === 'fulfilled') {
-            log.info('Automatically enabled plugin ' + promise.value.name);
+        if (promise.isFulfilled()) {
+            log.info('Automatically enabled plugin ' + plugin);
         } else {
             log.error('Failed to automatically enable plugin ' + plugin + ':',
-                      promise.reason);
+                      promise.reason());
         }
     });
     return startPoll(); // Execute step 4
 })
 .finally(function() {
     log.info('Initialization complete');
-})
-.done(); // Any hard errors (exceptions) in steps 2-4 are fatally rethrown here
+});
