@@ -2,12 +2,13 @@ var Q = require('q');
 var request = require('request');
 var xml2js = require('xml2js');
 
-var api, config;
+var api, app, config;
 var handlers = {};
 
-module.exports = function loadPlugin(resources, services) {
+module.exports = function loadPlugin(resources) {
     api = resources.api;
     config = resources.config;
+    app = resources.app;
     return handlers;
 };
 
@@ -45,7 +46,7 @@ function fetchSuggestions(query, language) {
         strictSSL: true,
         headers: {
             'Accept': 'text/xml,application/xml,application/xhtml+xml',
-            'User-Agent': config.userAgent
+            'User-Agent': app.identifier
         },
         qs: {
             'hl': language.substr(0, 2),

@@ -51,10 +51,15 @@ if (memlogSetting) {
     }, memlogSetting * 1000);
 }
 
-log.info('Initializing nocto/' + pjson.version);
-log.info('[1] Setup components and hooks');
+var appInfo = {
+    pjson: pjson,
+    root: __dirname,
+    identifier: pjson.name + '/' + pjson.version
+};
+botUtil.setAppRoot(appInfo.root);
 
-botUtil.setAppRoot(__dirname);
+log.info('Initializing ' + appInfo.identifier);
+log.info('[1] Setup components and hooks');
 
 var services = {};
 var serviceFactory = function(context, serviceName) {
@@ -71,13 +76,15 @@ var bot = new TgBot(extend(config.get('api'), {
 }));
 
 var pluginResources = {
-    api: bot.api
+    api: bot.api,
+    app: appInfo
 };
 var plugins = new PluginManager(extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
 }), pluginResources, serviceFactory);
 
 var serviceResources = {
+    app: appInfo,
     bot: bot,
     plugins: plugins,
     config: config
@@ -85,8 +92,7 @@ var serviceResources = {
 
 var serviceNames = config.get('services.register');
 serviceNames.forEach(function(serviceName) {
-    var service = require('./services/' + serviceName + '.js');
-    services[serviceName] = service;
+    services[serviceName] = require('./services/' + serviceName + '.js');
 });
 serviceNames.forEach(function(serviceName) {
     var service = services[serviceName];
