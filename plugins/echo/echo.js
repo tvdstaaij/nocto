@@ -69,6 +69,9 @@ module.exports = function loadPlugin(resources, service) {
             if (command.name.toLowerCase() === 'echo') {
 
                 var text = command.argument;
+                if (!text) {
+                    return;
+                }
 
                 // Reverse the string depending on configuration
                 if (config.reverse) {
