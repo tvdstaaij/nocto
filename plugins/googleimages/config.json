@@ -1,0 +1,14 @@
+{
+    // Reject image results with file size larger than this [B]
+    "maxImageSize": 2500000,
+    // Fetch this number of image files in parallel (fastest download wins)
+    "parallelDownloads": 4,
+    // Limit for the same query in the same chat (anti-spam)
+    "queryRepeatLimit": 5,
+    // Drop connection if it takes longer than this [s]
+    "requestTimeout": 5,
+    // Google host language, can be overridden like this: /imagefr
+    "defaultLanguage": "en",
+    // Google safe search level, valid settings: active moderate off
+    "safeSearch": "moderate"
+}

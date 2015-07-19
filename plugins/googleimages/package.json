@@ -1,0 +1,8 @@
+{
+    "name": "googleimages",
+    "version": "0.1.0",
+    "main": "googleimages.js",
+    "dependencies": {
+        "html-entities": "^1.1.3"
+    }
+}
