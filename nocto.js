@@ -11,52 +11,13 @@ var pjson = require('./package.json');
 log4js.configure(config.get('log'));
 var log = log4js.getLogger('nocto');
 
-var heapdumpSetting = config.get('debug.heapdump');
-if (heapdumpSetting) {
-    var heapdump = require('heapdump');
-    try {
-        fs.mkdirSync('./heapdump');
-    } catch (error) {
-        if (error.code !== 'EEXIST') {
-            throw error;
-        }
-    }
-    var makeHeapdump = function() {
-        heapdump.writeSnapshot('./heapdump/' + Date.now() + '.heapsnapshot',
-            function(err, filename) {
-                if (err) {
-                    log.error('Heap dump failed:', err);
-                } else {
-                    log.debug('Heap dump written to', filename);
-                }
-            });
-    };
-    // Snapshot right now
-    makeHeapdump();
-    // And after init has probably finished
-    setTimeout(makeHeapdump, 10000);
-    // And according to period setting
-    setInterval(makeHeapdump, heapdumpSetting * 1000);
-}
-var memlogSetting = config.get('debug.memlog');
-if (memlogSetting) {
-    setInterval(function() {
-        var memoryUsage = process.memoryUsage();
-        Object.keys(memoryUsage).forEach(function(stat) {
-            memoryUsage[stat] = (memoryUsage[stat] / 1024 / 1024)
-                                .toFixed(1) + 'MiB';
-        });
-        log.debug('Memory usage:', memoryUsage);
-    }, memlogSetting * 1000);
-}
-
 var appInfo = {
     pjson: pjson,
     root: __dirname,
     identifier: pjson.name + '/' + pjson.version
 };
 
-log.info('Initializing ' + appInfo.identifier);
+log.info('# Initializing ' + appInfo.identifier + '#');
 log.info('[1] Setup components and hooks');
 
 process.on("unhandledRejection", function(error) {
@@ -152,7 +113,7 @@ function startPoll() {
 
 getMe() // Execute step 1
 .then(function(identity) { // Handle step 1 success
-    log.info('Identified myself as user #' + identity.id + ': @' +
+    log.info("\t-> Identified myself as user #" + identity.id + ': @' +
          identity.username + ' (' + identity.first_name + ')');
     return loadPlugins(); // Execute step 2
 }, function(error) { // Handle step 1 error
@@ -163,9 +124,9 @@ getMe() // Execute step 1
     promises.forEach(function(promise, index) {
         var plugin = pluginLoadList[index];
         if (promise.isFulfilled()) {
-            log.info('Loaded plugin ' + plugin);
+            log.info("\t-> Loaded plugin " + plugin);
         } else {
-            log.error('Failed to load plugin ' + plugin + ':',
+            log.error("\t-> Failed to load plugin " + plugin + ':',
                       promise.reason());
         }
     });
@@ -175,14 +136,14 @@ getMe() // Execute step 1
     promises.forEach(function(promise, index) {
         var plugin = pluginEnableList[index];
         if (promise.isFulfilled()) {
-            log.info('Automatically enabled plugin ' + plugin);
+            log.info("\t-> Automatically enabled plugin " + plugin);
         } else {
-            log.error('Failed to automatically enable plugin ' + plugin + ':',
+            log.error("\t-> Failed to automatically enable plugin " + plugin + ':',
                       promise.reason());
         }
     });
     return startPoll(); // Execute step 4
 })
-.finally(function() {
-    log.info('Initialization complete');
-});
+.tap(function() {
+    log.info("# Initialization complete #");
+}).done();
