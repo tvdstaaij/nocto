@@ -17,7 +17,7 @@ var appInfo = {
     identifier: pjson.name + '/' + pjson.version
 };
 
-log.info('# Initializing ' + appInfo.identifier + '#');
+log.info('# Initializing ' + appInfo.identifier + ' #');
 log.info('[1] Setup components and hooks');
 
 process.on("unhandledRejection", function(error) {
