@@ -1,8 +1,8 @@
 var extend = require('util-extend');
 var fs = require('fs');
 var path = require('path');
+var Promise = require('bluebird');
 var irc = require('irc');
-var Q = require('q');
 
 var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
@@ -22,7 +22,7 @@ handlers.enable = function(cb) {
         storage = result;
         storage.telegramAliases = storage.telegramAliases || {};
         storage.telegramColors = storage.telegramColors || {};
-        return Q.fcall(function() {
+        return Promise.try(function() {
             Object.keys(config.servers).forEach(function(serverName) {
                 var serverConfig = config.servers[serverName];
                 var client = new irc.Client(
