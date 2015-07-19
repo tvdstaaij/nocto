@@ -59,6 +59,10 @@ var appInfo = {
 log.info('Initializing ' + appInfo.identifier);
 log.info('[1] Setup components and hooks');
 
+process.on("unhandledRejection", function(error) {
+    log.warn('Unhandled failure: ', error);
+});
+
 var services = {};
 var serviceFactory = function(context, serviceName) {
     var service = services[serviceName];
