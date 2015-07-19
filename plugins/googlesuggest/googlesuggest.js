@@ -1,4 +1,4 @@
-var Q = require('q');
+var Promise = require('bluebird');
 var request = require('request');
 var xml2js = require('xml2js');
 
@@ -33,12 +33,11 @@ handlers.handleMessage = function(message, meta) {
                 chat_id: message.chat.id,
                 text: reply
             });
-        }).done();
+        });
     }
 };
 
 function fetchSuggestions(query, language) {
-    var deferred = Q.defer();
     var reqOptions = {
         method: 'GET',
         uri: config.requestUri,
@@ -54,43 +53,44 @@ function fetchSuggestions(query, language) {
             'q': query
         }
     };
-    request(reqOptions, function(error, response, body) {
-        if (error || response.statusCode !== 200) {
-            deferred.reject({
-                error: error || undefined,
-                status: response.status || undefined,
-                headers: response.headers || undefined
-            });
-            return;
-        }
-        xml2js.parseString(body, {
-            explicitRoot: false,
-            normalizeTags: true
-        }, function (error, xml) {
-            if (error) {
-                deferred.reject({
-                    xmlerror: error
+    return new Promise(function(resolve, reject) {
+        request(reqOptions, function(error, response, body) {
+            if (error || response.statusCode !== 200) {
+                reject({
+                    error: error || undefined,
+                    status: response.status || undefined,
+                    headers: response.headers || undefined
                 });
                 return;
             }
-            var suggestions = [];
-            (xml.completesuggestion || []).forEach(
+            xml2js.parseString(body, {
+                explicitRoot: false,
+                normalizeTags: true
+            }, function(error, xml) {
+                if (error) {
+                    reject({
+                        xmlerror: error
+                    });
+                    return;
+                }
+                var suggestions = [];
+                (xml.completesuggestion || []).forEach(
                 function(completeSuggestion) {
                     completeSuggestion = completeSuggestion || {};
                     (completeSuggestion.suggestion || []).forEach(
-                        function (suggestion) {
-                            var attr = suggestion.$ || {};
-                            var text = attr.data;
-                            if (text &&
-                                text.toLowerCase() !== query.toLowerCase()) {
-                                suggestions.push(text);
-                            }
+                    function(suggestion) {
+                        var attr = suggestion.$ || {};
+                        var text = attr.data;
+                        if (text &&
+                        text.toLowerCase() !== query.toLowerCase()) {
+                            suggestions.push(text);
                         }
+                    }
                     );
                 }
-            );
-            deferred.resolve(suggestions);
+                );
+                resolve(suggestions);
+            });
         });
     });
-    return deferred.promise;
 }
