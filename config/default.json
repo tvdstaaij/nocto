@@ -65,8 +65,17 @@
         // other services
         "register": [
             "persist",
-            "emoji"
-        ]
+            "emoji",
+            "interact"
+        ],
+
+        // Service-specific configuration options
+        "config": {
+            "interact": {
+                // Time to wait before resetting state, or 0 for indefinite [ms]
+                "defaultTimeout": 60000
+            }
+        }
     },
 
     // See https://github.com/nomiddlename/log4js-node#configuration
