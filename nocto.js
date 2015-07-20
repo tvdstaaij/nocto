@@ -81,7 +81,7 @@ function getMe() {
 // Boot step 2: call service init handlers
 var servicePromises = {};
 function initServices() {
-    log.info('[3] Initialize services');
+    log.info('[3] Initialize services (' + serviceNames.length + ')');
     serviceNames.forEach(function(serviceName) {
         var service = services[serviceName];
         var initResult = null;
@@ -118,14 +118,14 @@ function initServices() {
 // Boot step 3: load available plugins
 var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
-    log.info('[4] Load plugins');
+    log.info('[4] Load plugins (' + pluginLoadList.length + ')');
     return Promise.settle(plugins.load(pluginLoadList));
 }
 
 // Boot step 4: enable plugins marked for auto-enable
 var pluginEnableList = config.get('plugins.autoEnabled');
 function enablePlugins() {
-    log.info('[5] Auto-enable plugins');
+    log.info('[5] Auto-enable plugins (' + pluginEnableList.length + ')');
     return Promise.settle(plugins.enable(pluginEnableList));
 }
 
