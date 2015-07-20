@@ -62,6 +62,7 @@
         // Plugins may depend on some of these, and services may depend on
         // other services
         "register": [
+            "persist",
             "emoji"
         ]
     },
