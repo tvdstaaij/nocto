@@ -26,8 +26,16 @@ process.on("unhandledRejection", function(error) {
 
 var services = {};
 var serviceNames = config.get('services.register');
+var messageFilterServices = [], messageHandlerServices = [];
 serviceNames.forEach(function(serviceName) {
-    services[serviceName] = require('./services/' + serviceName + '.js');
+    var service = require('./services/' + serviceName + '.js');
+    services[serviceName] = service;
+    if (service.filterMessage) {
+        messageFilterServices.push(serviceName);
+    }
+    if (service.handleMessage) {
+        messageHandlerServices.push(serviceName);
+    }
 });
 var serviceFactory = function(context, serviceName) {
     var service = services[serviceName];
@@ -64,9 +72,44 @@ bot.on('messageReceived', function(message, meta) {
         meta.private) {
         return;
     }
-    plugins.invokeHandler('handleMessage', {
-        requireEnabled: true
-    }, [message, meta]);
+    // Pass message through service filters
+    Promise.each(messageFilterServices, function(serviceName) {
+        var service = services[serviceName];
+        return Promise.try(service.filterMessage.bind(service),
+               [message, meta]).then(function(returnValue) {
+            // All falsy values except undefined reject the message
+            if (!returnValue && returnValue !== undefined) {
+                return Promise.reject();
+            }
+        }).catch(function(error) {
+            if (error) {
+                log.error('Service ' + serviceName +
+                          ' failed to filter message: error =', error,
+                          ', message =', message);
+            }
+            return Promise.reject();
+        });
+    }).then(function() {
+        // Pass message to service message handlers
+        messageHandlerServices.forEach(function(serviceName) {
+            var service = services[serviceName];
+            try {
+                service.handleMessage.call(service, message, meta);
+            } catch (error) {
+                log.error('Service ' + serviceName +
+                ' failed to handle message: error =', error,
+                ', message =', message);
+            }
+        });
+        // Pass message to plugin message handlers
+        plugins.invokeHandler('handleMessage', {
+            requireEnabled: true
+        }, [message, meta]);
+    }).catch(function(rejection) {
+        if (rejection !== undefined) {
+            throw rejection;
+        }
+    });
 });
 
 // Boot step 1: get own identity (functions as API handshake as well)
