@@ -4,6 +4,7 @@ var fs = require('fs');
 var path = require('path');
 var log4js = require('log4js');
 var Promise = require('bluebird');
+var botUtil = require('./lib/utilities.js');
 var PluginManager = require('./lib/pluginmanager.js');
 var TgBot = require('./lib/tgbot.js');
 var pjson = require('./package.json');
@@ -143,10 +144,11 @@ function initServices() {
                             }
                             return servicePromises[targetServiceName]
                             .then(function() {
-                                return serviceFactory({
-                                    type: 'service',
-                                    name: serviceName
-                                }, targetServiceName);
+                                return serviceFactory(
+                                    new botUtil.ServiceConsumerContext(
+                                        'service', serviceName
+                                    ), targetServiceName
+                                );
                             });
                         }
                     ));
