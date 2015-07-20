@@ -101,6 +101,7 @@
 
     // Process return codes for various conditions
     "exitCodes": {
-        "botStartFailed": 3
+        "botStartFailed": 3,
+        "unexpectedExit": 4
     }
 }

@@ -21,8 +21,15 @@ var appInfo = {
 log.info('# Initializing ' + appInfo.identifier + ' #');
 log.info('[1] Setup components and hooks');
 
-process.on("unhandledRejection", function(error) {
+process.on('unhandledRejection', function(error) {
     log.warn('Unhandled failure: ', error);
+});
+
+process.on('beforeExit', function() {
+    log.fatal('The Node process has nothing left to do. This could be caused ' +
+              'by various conditions, including API poll failure with retry ' +
+              'disabled and service dependency deadlock.');
+    process.exit(config.get('exitCodes.unexpectedExit'));
 });
 
 var services = {};
