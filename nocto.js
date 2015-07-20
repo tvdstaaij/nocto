@@ -25,6 +25,10 @@ process.on("unhandledRejection", function(error) {
 });
 
 var services = {};
+var serviceNames = config.get('services.register');
+serviceNames.forEach(function(serviceName) {
+    services[serviceName] = require('./services/' + serviceName + '.js');
+});
 var serviceFactory = function(context, serviceName) {
     var service = services[serviceName];
     if (service && service.provides) {
@@ -53,26 +57,6 @@ var serviceResources = {
     config: config
 };
 
-var serviceNames = config.get('services.register');
-serviceNames.forEach(function(serviceName) {
-    services[serviceName] = require('./services/' + serviceName + '.js');
-});
-serviceNames.forEach(function(serviceName) {
-    var service = services[serviceName];
-    if (service && service.init) {
-        service.init(
-        extend(serviceResources, {
-            log: log4js.getLogger(serviceName)
-        }),
-        serviceFactory.bind(
-            undefined, {
-                type: 'service',
-                name: serviceName
-            }
-        ));
-    }
-});
-
 bot.on('messageReceived', function(message, meta) {
     // This is a candidate for refactoring into a service / filter
     // Would also make it possible to use resources like persistent storage
@@ -85,42 +69,106 @@ bot.on('messageReceived', function(message, meta) {
     }, [message, meta]);
 });
 
-// Boot step 1: get own identity (functions as API test as well)
+// Boot step 1: get own identity (functions as API handshake as well)
 function getMe() {
+    if (config.api.disable) {
+        return Promise.resolve();
+    }
     log.info('[2] Contact Telegram API');
-    return Promise.resolve(bot.api.getMe({}, {cache: false})); // Temp
+    return bot.api.getMe({}, {cache: false});
 }
 
-// Boot step 2: load available plugins
+// Boot step 2: call service init handlers
+var servicePromises = {};
+function initServices() {
+    log.info('[3] Initialize services');
+    serviceNames.forEach(function(serviceName) {
+        var service = services[serviceName];
+        var initResult = null;
+        if (service.init) {
+            initResult = new Promise(function(resolve) {
+                process.nextTick(function() {
+                    resolve(service.init(
+                        extend(serviceResources, {
+                            log: log4js.getLogger(serviceName)
+                        }), function(targetServiceName) {
+                            if (!servicePromises[targetServiceName]) {
+                                return Promise.reject(new ReferenceError(
+                                    'Service ' + targetServiceName +
+                                    ' does not exist'
+                                ));
+                            }
+                            return servicePromises[targetServiceName]
+                            .then(function() {
+                                return serviceFactory({
+                                    type: 'service',
+                                    name: serviceName
+                                }, targetServiceName);
+                            });
+                        }
+                    ));
+                });
+            });
+        }
+        servicePromises[serviceName] = initResult || Promise.resolve();
+    });
+    return Promise.props(servicePromises);
+}
+
+// Boot step 3: load available plugins
 var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
-    log.info('[3] Load plugins');
+    log.info('[4] Load plugins');
     return Promise.settle(plugins.load(pluginLoadList));
 }
 
-// Boot step 3: enable plugins marked for auto-enable
+// Boot step 4: enable plugins marked for auto-enable
 var pluginEnableList = config.get('plugins.autoEnabled');
 function enablePlugins() {
-    log.info('[4] Auto-enable plugins');
+    log.info('[5] Auto-enable plugins');
     return Promise.settle(plugins.enable(pluginEnableList));
 }
 
-// Boot step 4: instruct bot client to start polling
+// Boot step 5: instruct bot client to start polling
 function startPoll() {
-    log.info('[5] Start long polling loop');
+    if (config.api.disable) {
+        return;
+    }
+    log.info('[6] Start long polling loop');
     bot.poll.start();
 }
 
-getMe() // Execute step 1
-.then(function(identity) { // Handle step 1 success
-    log.info("\t-> Identified myself as user #" + identity.id + ': @' +
-         identity.username + ' (' + identity.first_name + ')');
-    return loadPlugins(); // Execute step 2
-}, function(error) { // Handle step 1 error
-    log.fatal('Starting bot failed at the getMe phase:', error);
+getMe()
+.tap(function(identity) {
+    if (identity) {
+        log.info("\t-> Identified myself as user #" + identity.id + ': @' +
+                 identity.username + ' (' + identity.first_name + ')');
+    }
+})
+.catch(function(error) { // Handle step 1 error
+    if (config.get('api.mandatoryHandshake')) {
+        log.fatal("\t-> Starting bot failed at the handshake phase:", error);
+        process.exit(config.get('exitCodes.botStartFailed'));
+    } else {
+        log.error("\t-> API handshake failed:", error);
+    }
+})
+.then(initServices)
+.finally(function() {
+    Object.keys(servicePromises).forEach(function(serviceName) {
+        var promise = servicePromises[serviceName];
+        if (promise.isFulfilled()) {
+            log.info("\t-> Initialized service " + serviceName);
+        } else {
+            log.fatal("\t-> Failed to initialize service " + serviceName);
+        }
+    });
+})
+.catch(function() {
     process.exit(config.get('exitCodes.botStartFailed'));
 })
-.then(function(promises) { // Handle step 2 result
+.then(loadPlugins)
+.tap(function(promises) {
     promises.forEach(function(promise, index) {
         var plugin = pluginLoadList[index];
         if (promise.isFulfilled()) {
@@ -130,20 +178,23 @@ getMe() // Execute step 1
                       promise.reason());
         }
     });
-    return enablePlugins(); // Execute step 3
 })
-.then(function(promises) { // Handle step 3 result
+.then(enablePlugins)
+.tap(function(promises) {
     promises.forEach(function(promise, index) {
         var plugin = pluginEnableList[index];
         if (promise.isFulfilled()) {
             log.info("\t-> Automatically enabled plugin " + plugin);
         } else {
-            log.error("\t-> Failed to automatically enable plugin " + plugin + ':',
-                      promise.reason());
+            log.error("\t-> Failed to automatically enable plugin " +
+                      plugin + ':', promise.reason());
         }
     });
-    return startPoll(); // Execute step 4
 })
+.then(startPoll)
 .tap(function() {
     log.info("# Initialization complete #");
-}).done();
+}).catch(function (error) {
+    log.fatal('Unhandled error during init: ', error);
+    process.exit(config.get('exitCodes.botStartFailed'));
+});

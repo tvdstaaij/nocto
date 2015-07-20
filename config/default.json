@@ -21,7 +21,9 @@
         // Whether to enforce certificate validity
         "strictSSL": true,
         // Limit on open connections with the Telegram servers
-        "maxSimultaneousConnections": 4
+        "maxSimultaneousConnections": 4,
+        // True to cancel bot init if the initial getMe API call fails
+        "mandatoryHandshake": true
     },
     
     "behavior": {
