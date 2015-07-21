@@ -1,8 +1,8 @@
+var _ = require('underscore');
 var config = require('config');
-var extend = require('util-extend');
 var fs = require('fs');
-var path = require('path');
 var log4js = require('log4js');
+var path = require('path');
 var Promise = require('bluebird');
 var botUtil = require('./lib/utilities.js');
 var PluginManager = require('./lib/pluginmanager.js');
@@ -53,7 +53,7 @@ var serviceFactory = function(context, serviceName) {
     return false;
 };
 
-var bot = new TgBot(extend(config.get('api'), {
+var bot = new TgBot(_.extend(config.get('api'), {
     logCategory: 'tgbot',
     commandPrefix: config.get('behavior.commandPrefix')
 }));
@@ -62,7 +62,7 @@ var pluginResources = {
     api: bot.api,
     app: appInfo
 };
-var plugins = new PluginManager(extend(config.get('plugins'), {
+var plugins = new PluginManager(_.extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
 }), pluginResources, serviceFactory);
 
@@ -140,7 +140,7 @@ function initServices() {
             initResult = new Promise(function(resolve) {
                 process.nextTick(function() {
                     resolve(service.init(
-                        extend(serviceResources, {
+                        _.extend(serviceResources, {
                             log: log4js.getLogger(serviceName)
                         }), function(targetServiceName) {
                             if (!servicePromises[targetServiceName]) {

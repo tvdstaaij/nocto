@@ -1,6 +1,6 @@
+var _ = require('underscore');
 var emojiData = require('emoji-data');
 var emojiRegex = require('emoji-regex');
-var extend = require('util-extend');
 
 // http://unicode.org/reports/tr51/#Subject_Emoji_Modifiers
 var skinVariantCandidates = [
@@ -103,5 +103,5 @@ methods.applySkinVariants = function(text) {
 };
 
 module.exports.provides = function() {
-    return extend(properties, methods);
+    return _.extend(properties, methods);
 };

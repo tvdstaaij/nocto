@@ -1,8 +1,8 @@
-var extend = require('util-extend');
+var _ = require('underscore');
 var fs = require('fs');
+var irc = require('irc');
 var path = require('path');
 var Promise = require('bluebird');
-var irc = require('irc');
 
 var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
@@ -27,7 +27,7 @@ handlers.enable = function(cb) {
                 var serverConfig = config.servers[serverName];
                 var client = new irc.Client(
                     serverConfig.host, serverConfig.nick,
-                    extend(serverConfig.options, {
+                    _.extend(serverConfig.options, {
                         stripColors: true,
                         channels: Object.keys(serverConfig.channels),
                         autoConnect: false
@@ -273,7 +273,7 @@ function relayIrcEvent(event, context) {
 
     var relayedToGroups = [];
     inboundRoutes.forEach(function(route) {
-        var eventCopy = extend({}, event);
+        var eventCopy = _.extend({}, event);
         // Ignore if not relevant to this route
         if (route.serverName !== context.serverName ||
             !isInChannel(route.from, channels)) {
@@ -324,7 +324,7 @@ function relayIrcEvent(event, context) {
 
     var relayedToChannels = [];
     copyRoutes.forEach(function(route) {
-        var eventCopy = extend({}, event);
+        var eventCopy = _.extend({}, event);
         // Ignore if target not ready yet
         if (readyServers.indexOf(route.to.serverName) === -1) {
             return;
