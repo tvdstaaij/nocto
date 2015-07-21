@@ -1,21 +1,16 @@
 var _ = require('underscore');
 var botUtil = require('../lib/utilities.js');
 
-var storage, users;
+var api, storage, users;
 
-var authorityLevels = {
-    'b': 0, // Blacklisted
-    '': 1,  // Default
-    '+': 2, // Trusted
-    '%': 3, // Half-operator
-    '@': 4, // Operator
-    '&': 5, // Administrator
-    '~': 6  // Owner
-};
-var authoritySymbols = _.invert(authorityLevels);
+var authoritySymbols = ['b', '', '+', '%', '@', '&', '~'];
+var authorityNames = ['Blacklisted', 'User', 'Trusted', 'Half-operator',
+                      'Operator', 'Administrator', 'Founder'];
+var authorityLevels = _.invert(authoritySymbols);
 
 module.exports.init = function(resources, service) {
     var persist;
+    api = resources.bot.api;
     return botUtil.loadServiceDependencies(['persist'], service)
     .then(function(services) {
         persist = services.persist;
@@ -25,7 +20,6 @@ module.exports.init = function(resources, service) {
     })
     .then(function(container) {
         storage = container;
-        storage.ownerRegistered = storage.ownerRegistered || false;
         storage.users = storage.users || {};
         users = storage.users;
     });
@@ -63,7 +57,8 @@ module.exports.provides = function(context) {
         name: getUserDataByUserName,
         UserAuthority: UserAuthority,
         authoritySymbols: authoritySymbols,
-        authorityLevels: authorityLevels
+        authorityLevels: authorityLevels,
+        authorityNames: authorityNames
     };
 };
 
@@ -78,7 +73,40 @@ module.exports.handleMessage = function(message, meta) {
     userRecord.userName = sender.username || null;
     userRecord.firstName = sender.first_name || null;
     userRecord.lastName = sender.last_name || null;
+
+    if (meta.command) {
+        var reply = handleCommand(message.from.id, meta.command);
+        if (reply) {
+            api.sendMessage({
+                chat_id: message.chat.id,
+                text: reply
+            });
+        }
+    }
 };
+
+function handleCommand(userId, command) {
+    var reply = null;
+    switch (command.name) {
+    case 'owner':
+        var owner = _.find(users, function(user) {
+            return user.authorityLevel.toString() === authorityLevels['~'];
+        });
+        if (owner === undefined) {
+            var user = users[userId];
+            if (user) {
+                user.authorityLevel = authorityLevels['~'];
+                reply = 'You are now registered as my owner.';
+            } else {
+                reply = 'Error: could not look up your user ID.';
+            }
+        } else {
+            reply = 'I already have an owner.';
+        }
+        break;
+    }
+    return reply;
+}
 
 function UserData(id, record, context) {
     this.id = id;
@@ -121,6 +149,10 @@ UserAuthority.prototype.level = function() {
 
 UserAuthority.prototype.symbol = function() {
     return this._level === null ? null : authoritySymbols[this._level];
+};
+
+UserAuthority.prototype.name = function() {
+    return this._level === null ? null : authorityNames[this._level];
 };
 
 UserAuthority.prototype.isAtLeast = function(minimalAuthority) {
