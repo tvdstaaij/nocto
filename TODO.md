@@ -1,20 +1,27 @@
-## Specific feature wishlist for the short term
+## Core / miscellaneous
 
 * Timeouts on critical plugin operations (load/enable/disable)
 * Retry queue for API calls
-* Dynamic plugin control with reload support
 * Properly test all API methods with various parameters
-* Use MongoDB for keeping track of state/users/chats and providing a database
-  service for plugins
-* Implement more allowPrivate rules (fromKnown, fromPrivileged)
-* Create a proper shutdown routine (maybe with node-shutdown-manager)
+* Proper shutdown routine (maybe with node-shutdown-manager)
+* Interactive first-time setup 
+* Better documentation
 
-## High priority plugins
+## Services
 
-* RSS/Atom feed monitoring
+* Dynamic plugin control with persistence and reload support
+* Origin-based message filtering (fromKnown, fromPrivileged, fromChannel etc)
+* Message throttling / anti-spam
+* Database support (probably MongoDB)
+* Help system
+
+## Plugins
+
+* RSS/Atom feed announcements
 * Message logging and statistics
+* Music search and playback
 
-## Vague wishlist for the long term
+## Long term
 
 * Webinterface
 * Plenty of plugins
