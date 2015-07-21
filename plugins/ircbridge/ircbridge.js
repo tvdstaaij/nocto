@@ -273,7 +273,7 @@ function relayIrcEvent(event, context) {
 
     var relayedToGroups = [];
     inboundRoutes.forEach(function(route) {
-        var eventCopy = _.extend({}, event);
+        var eventCopy = _.clone(event);
         // Ignore if not relevant to this route
         if (route.serverName !== context.serverName ||
             !isInChannel(route.from, channels)) {
@@ -324,7 +324,7 @@ function relayIrcEvent(event, context) {
 
     var relayedToChannels = [];
     copyRoutes.forEach(function(route) {
-        var eventCopy = _.extend({}, event);
+        var eventCopy = _.clone(event);
         // Ignore if target not ready yet
         if (readyServers.indexOf(route.to.serverName) === -1) {
             return;
