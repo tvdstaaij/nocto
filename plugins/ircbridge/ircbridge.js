@@ -510,7 +510,8 @@ function sendWhoisRequest(telegramGroup, ircChannel, ircUser) {
 
 function setAlias(telegramGroup, telegramUser, alias) {
     // Validation: http://stackoverflow.com/a/5163309/1239690
-    if (!/^[a-z_\-\[\]\\^{}|`][a-z0-9_\-\[\]\\^{}|`]*$/i.test(alias)) {
+    if (alias.length > 30 ||
+        !/^[a-z_\-\[\]\\^{}|`][a-z0-9_\-\[\]\\^{}|`]*$/i.test(alias)) {
         api.sendMessage({
             chat_id: telegramGroup,
             text: 'Not a valid IRC nickname.'
