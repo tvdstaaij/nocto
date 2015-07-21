@@ -20,6 +20,10 @@ handlers.handleMessage = function(message, meta) {
     var match = command.name.match(/^(g|google)?suggest[^a-z]*([a-z]*)$/i);
     var query = command.argument;
     if (match && query) {
+        api.sendChatAction({
+            chat_id: message.chat.id,
+            action: 'typing'
+        });
         var reply = '';
         fetchSuggestions(query, match[2] || config.defaultLanguage).then(
             function(suggestions) {
