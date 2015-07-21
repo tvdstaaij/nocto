@@ -212,7 +212,8 @@ getMe()
         if (promise.isFulfilled()) {
             log.info("\t-> Initialized service " + serviceName);
         } else {
-            log.fatal("\t-> Failed to initialize service " + serviceName);
+            log.fatal("\t-> Failed to initialize service " + serviceName + ':',
+                      promise.reason());
         }
     });
 })
