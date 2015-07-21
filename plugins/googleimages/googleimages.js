@@ -21,7 +21,7 @@ handlers.handleMessage = function(message, meta) {
     if (!meta.fresh || !command) {
         return;
     }
-    var commandRegex = /^(g|google)?(images|img)s?[^a-z]*([a-z]*)$/i;
+    var commandRegex = /^(g|google)?(image|img)s?[^a-z]*([a-z]*)$/i;
     var match = command.name.match(commandRegex);
     var query = command.argument;
     if (match && query) {
