@@ -45,21 +45,41 @@ module.exports.provides = function(context) {
     };
 };
 
-module.exports.filterMessge = function(message, meta) {
-    var sender = message.from;
-    var userRecord = users[sender.id];
-    if (!userRecord) {
-        userRecord = users[sender.id] = {};
-        userRecord.firstSeen = meta.sendDate.toJSON();
-        userRecord.authorityLevel = authorityLevelsBySymbol[''];
+module.exports.filterMessage = function(message, meta) {
+    var userRecord = getUserRecordForEvent(message.from, meta.sendDate);
+    var chatId = message.chat.id;
+    if (chatId < 0) {
+        userRecord.groups[chatId] = true;
     }
-    userRecord.userName = sender.username || null;
-    userRecord.firstName = sender.first_name || null;
-    userRecord.lastName = sender.last_name || null;
+    var participant;
+    if (participant = message.new_chat_participant) {
+        getUserRecordForEvent(participant, meta.sendDate)
+        .groups[chatId] = true;
+    }
+    if (participant = message.left_chat_participant) {
+        getUserRecordForEvent(participant, meta.sendDate)
+        .groups[chatId] = false;
+    }
+    meta.authority = new UserAuthority(userRecord.authorityLevel);
 };
 
+function getUserRecordForEvent(userIdentity, eventDate) {
+    var userRecord = users[userIdentity.id];
+    if (!userRecord) {
+        userRecord = users[userIdentity.id] = {};
+        userRecord.firstSeen = eventDate.toJSON();
+        userRecord.authorityLevel = authorityLevelsBySymbol['-'];
+        userRecord.groups = {};
+        userRecord.identity = {};
+    }
+    userRecord.identity.username = userIdentity.username || null;
+    userRecord.identity.first_name = userIdentity.first_name || null;
+    userRecord.identity.last_name = userIdentity.last_name || null;
+    return userRecord;
+}
+
 module.exports.handleMessage = function(message, meta) {
-    if (!meta.command) {
+    if (!meta.fresh || !meta.command) {
         return;
     }
     var reply = handleCommand(message.from.id, meta.command);
@@ -130,8 +150,7 @@ function handleAuthorityCommand(commandUserId, targetSpec, authoritySpec) {
                'level ' + targetAuthority.level() + ', symbol \'' +
                targetAuthority.symbol() + '\').';
     }
-    var newAuthority = new UserAuthority(authoritySpec.toString().
-                                         toLowerCase());
+    var newAuthority = new UserAuthority(String(authoritySpec).toLowerCase());
     if (newAuthority.level() === null) {
         return 'Invalid authority specification. Try one of: ' +
                authorityNames.join(' ');
@@ -187,9 +206,9 @@ function UserAuthority(specification) {
     if (specification && specification._level !== undefined) {
         this._level = specification._level;
     } else {
-        this._level = specification ? UserAuthority.resolveToLevel(
-            specification.toString().toLowerCase()
-        ) : null;
+        this._level = UserAuthority.resolveToLevel(
+            String(specification).toLowerCase()
+        );
     }
     if (this._level !== null) {
         this._level = this._level.toString();
@@ -197,15 +216,14 @@ function UserAuthority(specification) {
 }
 
 UserAuthority.resolveToLevel = function(specification) {
-    var level;
     if (authoritySymbols[specification] !== undefined) {
         return specification;
     }
-    level = authorityLevelsBySymbol[specification];
+    var level = authorityLevelsBySymbol[specification];
     if (level !== undefined) {
         return level;
     }
-    level = authorityLevelsByName[specification.toString().toLowerCase()];
+    level = authorityLevelsByName[String(specification).toLowerCase()];
     if (level !== undefined) {
         return level;
     }
