@@ -3,10 +3,11 @@ var botUtil = require('../lib/utilities.js');
 
 var api, storage, users;
 
-var authoritySymbols = ['b', '', '+', '%', '@', '&', '~'];
-var authorityNames = ['Blacklisted', 'User', 'Trusted', 'Half-operator',
-                      'Operator', 'Administrator', 'Founder'];
-var authorityLevels = _.invert(authoritySymbols);
+var authoritySymbols = ['b', '-', '+', '%', '@', '&', '~'];
+var authorityNames = ['blacklisted', 'user', 'trusted', 'half-operator',
+                      'operator', 'administrator', 'owner'];
+var authorityLevelsBySymbol = _.invert(authoritySymbols);
+var authorityLevelsByName = _.invert(authorityNames);
 
 module.exports.init = function(resources, service) {
     var persist;
@@ -26,62 +27,47 @@ module.exports.init = function(resources, service) {
 };
 
 module.exports.provides = function(context) {
-
-    function getUserData(id, record) {
-        return record ? new UserData(id, record, context) : undefined;
+    function getUserData(recordPair) {
+        return recordPair ?
+            new UserData(recordPair[0], recordPair[1], context) : undefined;
     }
-
-    function getUserDataById(id) {
-        return getUserData(id, users[id]);
-    }
-
-    function getUserDataByUserName(name) {
-        if (!name) {
-            return undefined;
-        }
-        name = name.toString();
-        if (name.length && name[0] === '@') {
-            name = name.substr(1);
-        }
-        var userRecord = _.find(_.pairs(users), function(recordPair) {
-            return recordPair[1].userName === name;
-        });
-        if (!userRecord) {
-            return undefined;
-        }
-        return getUserData(userRecord[0], userRecord[1]);
-    }
-
     return {
-        id: getUserDataById,
-        name: getUserDataByUserName,
+        id: function(id) {
+            return getUserData(getRecordById(id));
+        },
+        name: function(name) {
+            return getUserData(getRecordByUserName(name));
+        },
         UserAuthority: UserAuthority,
         authoritySymbols: authoritySymbols,
-        authorityLevels: authorityLevels,
+        authorityLevelsBySymbol: authorityLevelsBySymbol,
         authorityNames: authorityNames
     };
 };
 
-module.exports.handleMessage = function(message, meta) {
+module.exports.filterMessge = function(message, meta) {
     var sender = message.from;
     var userRecord = users[sender.id];
     if (!userRecord) {
         userRecord = users[sender.id] = {};
         userRecord.firstSeen = meta.sendDate.toJSON();
-        userRecord.authorityLevel = authorityLevels[''];
+        userRecord.authorityLevel = authorityLevelsBySymbol[''];
     }
     userRecord.userName = sender.username || null;
     userRecord.firstName = sender.first_name || null;
     userRecord.lastName = sender.last_name || null;
+};
 
-    if (meta.command) {
-        var reply = handleCommand(message.from.id, meta.command);
-        if (reply) {
-            api.sendMessage({
-                chat_id: message.chat.id,
-                text: reply
-            });
-        }
+module.exports.handleMessage = function(message, meta) {
+    if (!meta.command) {
+        return;
+    }
+    var reply = handleCommand(message.from.id, meta.command);
+    if (reply) {
+        api.sendMessage({
+            chat_id: message.chat.id,
+            text: reply
+        });
     }
 };
 
@@ -90,12 +76,13 @@ function handleCommand(userId, command) {
     switch (command.name) {
     case 'owner':
         var owner = _.find(users, function(user) {
-            return user.authorityLevel.toString() === authorityLevels['~'];
+            return user.authorityLevel.toString() ===
+                   authorityLevelsBySymbol['~'];
         });
         if (owner === undefined) {
             var user = users[userId];
             if (user) {
-                user.authorityLevel = authorityLevels['~'];
+                user.authorityLevel = authorityLevelsBySymbol['~'];
                 reply = 'You are now registered as my owner.';
             } else {
                 reply = 'Error: could not look up your user ID.';
@@ -104,8 +91,82 @@ function handleCommand(userId, command) {
             reply = 'I already have an owner.';
         }
         break;
+    case 'blacklist':
+    case 'ban':
+        reply = handleAuthorityCommand(userId, command.argumentTokens[0], 'b');
+        break;
+    case 'authority':
+        reply = handleAuthorityCommand(userId, command.argumentTokens[0],
+                                       command.argumentTokens[1]);
+        break;
     }
     return reply;
+}
+
+function handleAuthorityCommand(commandUserId, targetSpec, authoritySpec) {
+    var commandUser = users[commandUserId];
+    if (!commandUser) {
+        return 'I could not find your own user record.';
+    }
+    var commandAuthority = new UserAuthority(commandUser.authorityLevel);
+    var targetRecord = null;
+    if (targetSpec) {
+        if (targetSpec.length && targetSpec[0] === '@') {
+            targetRecord = getRecordByUserName(targetSpec);
+        } else {
+            targetRecord = getRecordById(targetSpec);
+        }
+        if (targetRecord) {
+            targetRecord = targetRecord[1];
+        }
+    }
+    if (!targetRecord) {
+        return 'I do not know of this user. Make sure it is a valid ' +
+               'numerical ID or @username.';
+    }
+    if (!authoritySpec) {
+        var targetAuthority = new UserAuthority(targetRecord.authorityLevel);
+        return 'That user\'s authority is "' + targetAuthority.name() + '" (' +
+               'level ' + targetAuthority.level() + ', symbol \'' +
+               targetAuthority.symbol() + '\').';
+    }
+    var newAuthority = new UserAuthority(authoritySpec.toString().
+                                         toLowerCase());
+    if (newAuthority.level() === null) {
+        return 'Invalid authority specification. Try one of: ' +
+               authorityNames.join(' ');
+    }
+    if (!commandAuthority.isAtLeast('%')) {
+        return 'You must be half-operator or higher to set authority levels.';
+    }
+    if (!commandAuthority.isAtLeast(targetRecord.authorityLevel)) {
+        return 'Your target must not have a higher authority than you do.';
+    }
+    if ((newAuthority.equals('%') && !commandAuthority.isAtLeast('@')) ||
+        !commandAuthority.isAtLeast(newAuthority)) {
+        return 'Your own authority is insufficient to grant this authority.';
+    }
+    targetRecord.authorityLevel = newAuthority.level();
+    return 'Authority level set to "' + newAuthority.name() + '".';
+}
+
+function getRecordById(id) {
+    var record = users[id];
+    return record ? [id, record] : undefined;
+}
+
+function getRecordByUserName(name) {
+    if (!name) {
+        return undefined;
+    }
+    name = name.toString();
+    if (name.length && name[0] === '@') {
+        name = name.substr(1);
+    }
+    var recordPair = _.find(_.pairs(users), function(recordPair) {
+        return recordPair[1].userName === name;
+    });
+    return recordPair ? recordPair : undefined;
 }
 
 function UserData(id, record, context) {
@@ -126,7 +187,9 @@ function UserAuthority(specification) {
     if (specification && specification._level !== undefined) {
         this._level = specification._level;
     } else {
-        this._level = UserAuthority.resolveToLevel(specification.toString());
+        this._level = specification ? UserAuthority.resolveToLevel(
+            specification.toString().toLowerCase()
+        ) : null;
     }
     if (this._level !== null) {
         this._level = this._level.toString();
@@ -134,11 +197,17 @@ function UserAuthority(specification) {
 }
 
 UserAuthority.resolveToLevel = function(specification) {
+    var level;
     if (authoritySymbols[specification] !== undefined) {
         return specification;
     }
-    if (authorityLevels[specification] !== undefined) {
-        return authorityLevels[specification];
+    level = authorityLevelsBySymbol[specification];
+    if (level !== undefined) {
+        return level;
+    }
+    level = authorityLevelsByName[specification.toString().toLowerCase()];
+    if (level !== undefined) {
+        return level;
     }
     return null;
 };
