@@ -189,8 +189,9 @@ function getRecordByUserName(name) {
 }
 
 function UserData(id, record, context) {
-    this.id = id;
-    this.identity = _.clone(record.identity);
+    this.identity = _.extend({
+        id: id
+    }, record.identity);
     this.firstSeen = record.firstSeen ? new Date(record.firstSeen) : null;
     this.authority = new UserAuthority(record.authorityLevel);
     if (context) {
