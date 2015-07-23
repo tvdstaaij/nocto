@@ -160,7 +160,16 @@ function initServices() {
                         }
                     ));
                 });
+            }).tap(function() {
+                log.info("\t-> Initialized service " + serviceName);
+            }).catch(function(error) {
+                log.fatal("\t-> Failed to initialize service " +
+                serviceName + ':', error);
+                throw error;
             });
+        } else {
+            log.info("\t-> Service " + serviceName +
+                     ' does not require initialization');
         }
         servicePromises[serviceName] = initResult || Promise.resolve();
     });
@@ -197,7 +206,7 @@ getMe()
                  identity.username + ' (' + identity.first_name + ')');
     }
 })
-.catch(function(error) { // Handle step 1 error
+.catch(function(error) {
     if (config.get('api.mandatoryHandshake')) {
         log.fatal("\t-> Starting bot failed at the handshake phase:", error);
         process.exit(config.get('exitCodes.botStartFailed'));
@@ -206,17 +215,6 @@ getMe()
     }
 })
 .then(initServices)
-.finally(function() {
-    Object.keys(servicePromises).forEach(function(serviceName) {
-        var promise = servicePromises[serviceName];
-        if (promise.isFulfilled()) {
-            log.info("\t-> Initialized service " + serviceName);
-        } else {
-            log.fatal("\t-> Failed to initialize service " + serviceName + ':',
-                      promise.reason());
-        }
-    });
-})
 .catch(function() {
     process.exit(config.get('exitCodes.botStartFailed'));
 })
