@@ -1,4 +1,4 @@
-var _ = require('underscore');
+var _ = require('lodash');
 var emojiData = require('emoji-data');
 var emojiRegex = require('emoji-regex');
 

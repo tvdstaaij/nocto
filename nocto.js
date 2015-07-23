@@ -1,4 +1,4 @@
-var _ = require('underscore');
+var _ = require('lodash');
 var config = require('config');
 var fs = require('fs');
 var log4js = require('log4js');
