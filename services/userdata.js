@@ -183,16 +183,14 @@ function getRecordByUserName(name) {
         name = name.substr(1);
     }
     var recordPair = _.find(_.pairs(users), function(recordPair) {
-        return recordPair[1].userName === name;
+        return recordPair[1].identity.username === name;
     });
     return recordPair ? recordPair : undefined;
 }
 
 function UserData(id, record, context) {
     this.id = id;
-    this.userName = record.userName;
-    this.firstName = record.firstName;
-    this.lastName = record.lastName;
+    this.identity = _.clone(record.identity);
     this.firstSeen = record.firstSeen ? new Date(record.firstSeen) : null;
     this.authority = new UserAuthority(record.authorityLevel);
     if (context) {
