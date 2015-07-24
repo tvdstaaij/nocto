@@ -1,0 +1,15 @@
+{
+    // Wait time between checking a feeds for new entires [s]
+    "interval": 60,
+    // Time before considering a feed fetch attempt failed
+    "requestTimeout": 10,
+    // Maximum number of new entries in a single announce message (anti flood)
+    "maxDigestSize": 5,
+    // Minimal authority levels for executing certain commands (see userdata service)
+    "privileges": {
+        // Management of public feeds (addfeed/delfeed)
+        "manage": "administrator",
+        // Create private subscriptions with custom URL
+        "subscribeCustom": "trusted"
+    }
+}
