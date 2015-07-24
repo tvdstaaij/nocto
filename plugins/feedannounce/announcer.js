@@ -118,7 +118,7 @@ function Announcer(resources) {
                 headers: customHeaders
             };
 
-            request(reqOptions).on('error', function(error) {
+            var pendingRequest = request(reqOptions).on('error', function(error) {
                 reject({httpError: error});
             }).on('response', function(response) {
                 var headers = response.headers, status = response.statusCode;
@@ -139,7 +139,7 @@ function Announcer(resources) {
                 if (headers['last-modified']) {
                     feed.lastModified = headers['last-modified'];
                 }
-                resolve(parseFeed(feed, response));
+                resolve(parseFeed(feed, pendingRequest));
             });
         });
     }
