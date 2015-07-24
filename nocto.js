@@ -12,6 +12,13 @@ var pjson = require('./package.json');
 log4js.configure(config.get('log'));
 var log = log4js.getLogger('nocto');
 
+var nodeVersion = process.versions.node.split('.');
+if (nodeVersion[0] === '0' && nodeVersion[1] < 12) {
+    log.fatal('Your node version is ' + process.version + ', but ' + pjson.name +
+              ' needs at least v0.12');
+    process.exit(config.get('exitCodes.botStartFailed'));
+}
+
 var appInfo = {
     pjson: pjson,
     root: __dirname,
