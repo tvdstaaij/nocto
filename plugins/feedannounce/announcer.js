@@ -76,7 +76,10 @@ function Announcer(resources) {
         var digest = [];
         var maxSize = Number(config.maxDigestSize);
         updates.slice(0, maxSize).forEach(function(update) {
-            digest.unshift(formatEntry(update));
+            var formattedEntry = formatEntry(update);
+            if (formattedEntry) {
+                digest.unshift(formattedEntry);
+            }
         });
         var digestText = digest.join("\n\n");
         if (!digestText.length) {
