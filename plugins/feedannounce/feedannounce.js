@@ -24,6 +24,13 @@ handlers.enable = function(cb) {
     }).nodeify(cb);
 };
 
+handlers.disable = function(cb) {
+    process.nextTick(function() {
+        announcer.schedule(false);
+        cb(null, true);
+    });
+};
+
 handlers.handleMessage = function(message, meta) {
     var command = meta.command;
     if (!meta.fresh || !command) {

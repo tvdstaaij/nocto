@@ -16,6 +16,9 @@ function Announcer(resources) {
         if (timer) {
             clearInterval(timer);
         }
+        if (!feedContainer) {
+            return;
+        }
         currentIndex = 0;
         feeds = feedContainer;
         labels = _(feedUtil.getFeedArray(feeds))
