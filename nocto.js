@@ -14,8 +14,8 @@ var log = log4js.getLogger('nocto');
 
 var nodeVersion = process.versions.node.split('.');
 if (nodeVersion[0] === '0' && nodeVersion[1] < 12) {
-    log.fatal('Your node version is ' + process.version + ', but ' + pjson.name +
-              ' needs at least v0.12');
+    log.fatal('Your node version is ' + process.version + ', but ' +
+              pjson.name + ' needs at least v0.12');
     process.exit(config.get('exitCodes.botStartFailed'));
 }
 
@@ -72,6 +72,7 @@ var pluginResources = {
 var plugins = new PluginManager(_.extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
 }), pluginResources, serviceFactory);
+plugins.enableLater(config.get('plugins.autoEnabled'));
 
 var serviceResources = {
     app: appInfo,
@@ -127,6 +128,31 @@ bot.on('messageReceived', function(message, meta) {
     });
 });
 
+function watchPluginResult(name, operation, promise) {
+    var succeedFunc = _.partial(logPluginResult, name, operation, undefined);
+    var failFunc = _.partial(logPluginResult, name, operation);
+    return promise.tap(succeedFunc).catch(function(error) {
+        failFunc(error);
+        throw error;
+    });
+}
+
+function logPluginResult(name, operation, error) {
+    if (error === undefined) {
+        switch (operation) {
+        case 'enable':
+            operation = 'Enabled';
+            break;
+        case 'load':
+            operation = 'Loaded';
+        }
+        log.info("\t-> " + operation + " plugin " + name);
+    } else {
+        log.error("\t-> Failed to " + operation + " plugin " +
+        name + ':', error);
+    }
+}
+
 // Boot step 1: get own identity (functions as API handshake as well)
 function getMe() {
     if (config.api.disable) {
@@ -136,9 +162,10 @@ function getMe() {
     return bot.api.getMe({}, {cache: false});
 }
 
-// Boot step 2: call service init handlers
-var servicePromises = {};
+// Boot step 2: call service init handlers in a way that allows them to depend
+// on each other
 function initServices() {
+    var servicePromises = {};
     log.info('[3] Initialize services (' + serviceNames.length + ')');
     serviceNames.forEach(function(serviceName) {
         var service = services[serviceName];
@@ -187,14 +214,21 @@ function initServices() {
 var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
     log.info('[4] Load plugins (' + pluginLoadList.length + ')');
-    return Promise.settle(plugins.load(pluginLoadList));
+    var loadPromises = plugins.load(pluginLoadList);
+    loadPromises = _.mapValues(loadPromises, function(promise, pluginName) {
+        return watchPluginResult(pluginName, 'load', promise);
+    });
+    return Promise.settle(_.toArray(loadPromises));
 }
 
-// Boot step 4: enable plugins marked for auto-enable
-var pluginEnableList = config.get('plugins.autoEnabled');
+// Boot step 4: enable plugins in enable queue
 function enablePlugins() {
-    log.info('[5] Auto-enable plugins (' + pluginEnableList.length + ')');
-    return Promise.settle(plugins.enable(pluginEnableList));
+    log.info('[5] Enable plugins (' + plugins.getEnableQueueSize() + ')');
+    var enablePromises = plugins.enableQueued();
+    enablePromises = _.mapValues(enablePromises, function(promise, pluginName) {
+        return watchPluginResult(pluginName, 'enable', promise);
+    });
+    return Promise.settle(_.toArray(enablePromises));
 }
 
 // Boot step 5: instruct bot client to start polling
@@ -226,29 +260,9 @@ getMe()
     process.exit(config.get('exitCodes.botStartFailed'));
 })
 .then(loadPlugins)
-.tap(function(promises) {
-    promises.forEach(function(promise, index) {
-        var plugin = pluginLoadList[index];
-        if (promise.isFulfilled()) {
-            log.info("\t-> Loaded plugin " + plugin);
-        } else {
-            log.error("\t-> Failed to load plugin " + plugin + ':',
-                      promise.reason());
-        }
-    });
-})
+.catch(function(){}) // Plugin errors are non-critical, swallow and continue
 .then(enablePlugins)
-.tap(function(promises) {
-    promises.forEach(function(promise, index) {
-        var plugin = pluginEnableList[index];
-        if (promise.isFulfilled()) {
-            log.info("\t-> Automatically enabled plugin " + plugin);
-        } else {
-            log.error("\t-> Failed to automatically enable plugin " +
-                      plugin + ':', promise.reason());
-        }
-    });
-})
+.catch(function(){})
 .then(startPoll)
 .tap(function() {
     log.info("# Initialization complete #");
