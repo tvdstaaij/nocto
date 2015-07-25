@@ -4,8 +4,9 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+skel=".skeleton"
 cd "${0%/*}" # Make this directory (plugins) the working directory
 mkdir "$1"
-sed "s/skeleton/$1/g" skeleton/package.json >  "$1/package.json"
-cat skeleton/script.js > "$1/$1.js"
-cat skeleton/config.json > "$1/config.json"
+sed "s/$skel/$1/g" $skel/package.json >  "$1/package.json"
+cat $skel/script.js > "$1/$1.js"
+cat $skel/config.json > "$1/config.json"
