@@ -1,0 +1,8 @@
+{
+    // MP3 quality indicator: all, bad, good or best
+    "quality": "all",
+    // Wait time before giving up on the mp3 download server [s]
+    "downloadTimeout": 6,
+    // Max number of results to show as result of a search operation
+    "searchResultKeyboardSize": 6
+}
