@@ -40,15 +40,17 @@
     },
 
     "plugins": {
-        // List of registered plugins, from high to low processing priority
+        // If true, automatically load every plugin from plugins directory not starting with a .
+        "loadAll": true,
+
+        // Manual list of plugins to load (alternative to loadAll)
+        // Ordered from high to low processing priority
         "register": [
-            "echo"
         ],
         
-        // Plugins to be automatically enabled after a (re)load
-        // Currently this is the only way of enabling plugins
+        // List of plugins to always enable after bot start or reload command
+        // Can be used as an alternative or supplement to the pluginctl service
         "autoEnabled": [
-            "echo"
         ],
         
         // Optional plugin-specific configuration overrides
@@ -60,14 +62,14 @@
     },
 
     "services": {
-        // List of optional bot components provided to plugins
-        // Plugins may depend on some of these, and services may depend on
-        // other services
+        // List of optional bot components to load
+        // Plugins may depend on some of these, and services may depend on other services
         "register": [
             "userdata",
             "persist",
             "emoji",
-            "interact"
+            "interact",
+            "pluginctl"
         ],
 
         // Service-specific configuration options
