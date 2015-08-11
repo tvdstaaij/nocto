@@ -211,8 +211,8 @@ function initServices() {
 }
 
 // Boot step 3: load available plugins
-var pluginLoadList = config.get('plugins.register');
 function loadPlugins() {
+    var pluginLoadList = plugins.getNames();
     log.info('[4] Load plugins (' + pluginLoadList.length + ')');
     var loadPromises = plugins.load(pluginLoadList);
     loadPromises = _.mapValues(loadPromises, function(promise, pluginName) {
