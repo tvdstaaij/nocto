@@ -14,10 +14,6 @@ module.exports.init = function(resources, service) {
     pluginConfig = resources.config.get('plugins');
     pluginList = pluginManager.getNames();
 
-    bot.once('pollSucceeded', function() {
-        pluginManager.on('pluginLoaded', handlePluginLoaded);
-    });
-
     return botUtil.loadServiceDependencies(['persist', 'emoji'], service)
     .then(function(services) {
         persist = services.persist;
@@ -56,9 +52,12 @@ module.exports.handleMessage = function(message, meta) {
     var operation = command.argumentTokens[0].toLowerCase();
     var argument = command.argumentTokens.slice(1);
     switch (operation) {
+    case 'load':
+    case 'unload':
+    case 'reload':
     case 'enable':
     case 'disable':
-    case 'reload':
+    case 'reenable':
         if (!checkPrivilege(meta.authority, '&', reply)) return;
         performOperation(operation, argument, reply);
         break;
@@ -69,17 +68,13 @@ module.exports.handleMessage = function(message, meta) {
     }
 };
 
-function handlePluginLoaded(unit) {
-    log.info('Plugin loaded: ' + unit.name);
-}
-
 function performOperation(operation, pluginNames, reply) {
     var persistentAction = api.sendPersistentChatAction(
         reply.action('typing').build()
     );
     var reports = [], cleanPluginNames = [];
     if ((pluginNames.length === 1 && pluginNames[0].toLowerCase() === 'all') ||
-        (pluginNames.length === 0 && operation === 'reload')) {
+        (pluginNames.length === 0 && operation.indexOf('re') === 0)) {
         cleanPluginNames = pluginList.slice(0);
     } else {
         cleanPluginNames = _(pluginNames).invoke(String.prototype.trim)
@@ -98,16 +93,51 @@ function performOperation(operation, pluginNames, reply) {
             }).value();
     }
     Promise.try(function() {
-        if (operation === 'reload' || operation === 'disable') {
+        if (operation === 'reload' || operation === 'disable' ||
+            operation === 'reenable' || operation === 'unload') {
+            var disableQueue = _.filter(
+                cleanPluginNames, pluginManager.isLoaded
+            );
+            if (!disableQueue.length) {
+                return;
+            }
             return invokePluginOperation(
-                pluginManager.disable, [cleanPluginNames]
+                pluginManager.disable, [disableQueue]
             );
         }
     }).then(function(promises) {
         reports.push(makeOperationReport('disable', promises));
-        cleanPluginNames = removeFailedPlugins(cleanPluginNames, promises);
+        cleanPluginNames = removeFailedPlugins(operation, cleanPluginNames,
+                                               promises);
+        if (operation === 'reload' || operation === 'unload') {
+            return invokePluginOperation(
+                pluginManager.unload, [cleanPluginNames]
+            );
+        }
+    }).then(function(promises) {
+        reports.push(makeOperationReport('unload', promises));
+        cleanPluginNames = removeFailedPlugins(operation, cleanPluginNames,
+                                               promises);
+        if (operation === 'reload' || operation === 'load' ||
+            operation === 'enable') {
+            var enableQueue = operation === 'load' ? cleanPluginNames :
+                _.filter(
+                    cleanPluginNames, _.negate(pluginManager.isLoaded)
+                );
+            if (!enableQueue.length) {
+                return;
+            }
+            return invokePluginOperation(
+                pluginManager.load, [enableQueue]
+            );
+        }
+    }).then(function(promises) {
+        reports.push(makeOperationReport('load', promises));
+        cleanPluginNames = removeFailedPlugins(operation, cleanPluginNames,
+                                               promises);
         cleanPluginNames = _.filter(cleanPluginNames, hasEnablePermission);
-        if (operation === 'reload' || operation === 'enable') {
+        if (operation === 'reload' || operation === 'enable' ||
+            operation === 'reenable') {
             return invokePluginOperation(
                 pluginManager.enable, [cleanPluginNames]
             );
@@ -122,11 +152,13 @@ function performOperation(operation, pluginNames, reply) {
     });
 }
 
-function removeFailedPlugins(pluginNames, promises) {
+function removeFailedPlugins(operation, pluginNames, promises) {
     if (!pluginNames || !promises) return pluginNames;
     return _.filter(pluginNames, function(pluginName) {
         var promise = promises[pluginName];
-        return promise && promise.isFulfilled();
+        return !promise ||
+            (promise.isFulfilled() ||
+             isRedundantLoadResult(operation, promise.reason()));
     });
 }
 
@@ -171,6 +203,10 @@ function makeOperationReport(operation, promises) {
     if (_.isObject(promises)) {
         _.forEach(promises, function(promise, pluginName) {
             var success = promise.isFulfilled();
+            var result = success ? promise.value() : promise.reason();
+            if (!success && isRedundantLoadResult(operation, result)) {
+                success = true;
+            }
             if (!success) {
                 log.error('Failed to ' + operation + ' ' + pluginName +
                           ':', promise.reason());
@@ -183,6 +219,11 @@ function makeOperationReport(operation, promises) {
         });
     }
     return reports.join("\n");
+}
+
+function isRedundantLoadResult(operation, result) {
+    return _.isObject(result) && result.error &&
+        _.endsWith(operation, 'load') && _.endsWith(result.error, 'loaded');
 }
 
 function getEmojiForBoolean(bool) {
