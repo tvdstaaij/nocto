@@ -39,6 +39,34 @@ process.on('beforeExit', function() {
     process.exit(config.get('exitCodes.unexpectedExit'));
 });
 
+process.once('SIGINT', function() {
+    log.info(
+        'Interrupt received, initiating shutdown (interrupt again to force)'
+    );
+    process.once('SIGINT', function() {
+        log.fatal('Interrupted twice, force shutdown');
+        process.exit(config.exitCodes.forcedInterruptExit);
+    });
+    var disableList = _.filter(plugins.getNames(), plugins.isEnabled);
+    var disablePromises = _.mapValues(plugins.disable(disableList),
+        function(promise, pluginName) {
+            return watchPluginResult(pluginName, 'disable', promise);
+        }
+    );
+    Promise.settle(_.toArray(disablePromises)).then(function() {
+        var cleanShutdown = _.every(disablePromises, function(promise) {
+            return promise.isFulfilled();
+        });
+        if (cleanShutdown) {
+            log.info('Clean shutdown');
+            process.exit(config.exitCodes.cleanInterruptExit);
+        } else {
+            log.fatal('One or more plugins did not disable cleanly');
+            process.exit(config.exitCodes.dirtyInterruptExit);
+        }
+    });
+});
+
 var services = {};
 var serviceNames = config.get('services.register');
 var messageFilterServices = [], messageHandlerServices = [];
@@ -142,6 +170,9 @@ function logPluginResult(name, operation, error) {
         switch (operation) {
         case 'enable':
             operation = 'Enabled';
+            break;
+        case 'disable':
+            operation = 'Disabled';
             break;
         case 'load':
             operation = 'Loaded';
