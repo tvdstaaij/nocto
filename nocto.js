@@ -1,15 +1,14 @@
 var _ = require('lodash');
-var config = require('config');
 var fs = require('fs');
-var log4js = require('log4js');
+var os = require('os');
 var path = require('path');
 var Promise = require('bluebird');
+var log4js = require('log4js');
 var botUtil = require('./lib/utilities.js');
-var PluginManager = require('./lib/pluginmanager.js');
-var TgBot = require('./lib/tgbot.js');
 var pjson = require('./package.json');
+var setupWizard = require('./setupwizard.js');
+var TgBot = require('./lib/tgbot.js');
 
-log4js.configure(config.get('log'));
 var log = log4js.getLogger('nocto');
 
 var nodeVersion = process.versions.node.split('.');
@@ -18,6 +17,24 @@ if (nodeVersion[0] === '0' && nodeVersion[1] < 12) {
               pjson.name + ' needs at least v0.12');
     process.exit(config.get('exitCodes.botStartFailed'));
 }
+
+if (!setupWizard.isConfigCustomized()) {
+    log.info('No user configuration found');
+    log.info('Starting interactive setup wizard');
+    process.stdout.write(os.EOL);
+    // setupWizard.exec deliberately blocks the process until it finishes
+    if (!setupWizard.exec()) {
+        log.fatal('Failed to create configuration. Please correct the error ' +
+                  'and try again, or create config/local.json manually.');
+        process.exit(1);
+    }
+}
+
+// Config module and modules requiring config must be loaded after setup wizard
+var config = require('config');
+var PluginManager = require('./lib/pluginmanager.js');
+
+log4js.configure(config.get('log'));
 
 var appInfo = {
     pjson: pjson,
