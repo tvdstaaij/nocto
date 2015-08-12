@@ -206,6 +206,7 @@ function UserData(id, record, context) {
     }, record.identity);
     this.firstSeen = record.firstSeen ? new Date(record.firstSeen) : null;
     this.authority = new UserAuthority(record.authorityLevel);
+    this.groups = _.clone(record.groups);
     if (context) {
         record.contexts = record.contexts || {};
         this.contextual = record.contexts[context] =
