@@ -194,9 +194,9 @@ function logPluginResult(name, operation, error) {
         case 'load':
             operation = 'Loaded';
         }
-        log.info("\t-> " + operation + " plugin " + name);
+        log.info(' > ' + operation + ' plugin ' + name);
     } else {
-        log.error("\t-> Failed to " + operation + " plugin " +
+        log.error(' > Failed to ' + operation + ' plugin ' +
         name + ':', error);
     }
 }
@@ -214,7 +214,7 @@ function getMe() {
 // on each other
 function initServices() {
     var servicePromises = {};
-    log.info('[3] Initialize services (' + serviceNames.length + ')');
+    log.info('[3] Load services (' + serviceNames.length + ')');
     serviceNames.forEach(function(serviceName) {
         var service = services[serviceName];
         var initResult = null;
@@ -243,15 +243,14 @@ function initServices() {
                     ));
                 });
             }).tap(function() {
-                log.info("\t-> Initialized service " + serviceName);
+                log.info(' > Loaded service ' + serviceName);
             }).catch(function(error) {
-                log.fatal("\t-> Failed to initialize service " +
+                log.fatal(' > Failed to load service ' +
                 serviceName + ':', error);
                 throw error;
             });
         } else {
-            log.info("\t-> Service " + serviceName +
-                     ' does not require initialization');
+            log.info(' > Loaded service ' + serviceName);
         }
         servicePromises[serviceName] = initResult || Promise.resolve();
     });
@@ -291,16 +290,17 @@ function startPoll() {
 getMe()
 .tap(function(identity) {
     if (identity) {
-        log.info("\t-> Identified myself as user #" + identity.id + ': @' +
-                 identity.username + ' (' + identity.first_name + ')');
+        log.info(' > My user ID is #' + identity.id);
+        log.info(' > My username is ' + ' @' + identity.username);
+        log.info(' > My display name is ' + identity.first_name);
     }
 })
 .catch(function(error) {
     if (config.get('api.mandatoryHandshake')) {
-        log.fatal("\t-> Starting bot failed at the handshake phase:", error);
+        log.fatal(' > Starting bot failed at the handshake phase:', error);
         process.exit(config.get('exitCodes.botStartFailed'));
     } else {
-        log.error("\t-> API handshake failed:", error);
+        log.error(' > API handshake failed:', error);
     }
 })
 .then(initServices)
@@ -313,7 +313,7 @@ getMe()
 .catch(function(){})
 .then(startPoll)
 .tap(function() {
-    log.info("# Initialization complete #");
+    log.info('# Initialization complete #');
 }).catch(function (error) {
     log.fatal('Unhandled error during init: ', error);
     process.exit(config.get('exitCodes.botStartFailed'));
