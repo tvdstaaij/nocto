@@ -291,7 +291,7 @@ getMe()
 .tap(function(identity) {
     if (identity) {
         log.info(' > My user ID is #' + identity.id);
-        log.info(' > My username is ' + ' @' + identity.username);
+        log.info(' > My username is @' + identity.username);
         log.info(' > My display name is ' + identity.first_name);
     }
 })
