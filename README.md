@@ -27,6 +27,10 @@ The core functionality is still under development; consider it a beta version.
 7. List available plugins with `/plugins list`. You can enable any number of
    plugins with `/plugins enable plugin1 plugin2`.
 
+After the first run, which is interactive, you can just use your preferred way
+to (automatically) launch and keep the application running in the background.
+Sending an interrupt signal (Control-C) initiates a clean shutdown.
+
 ## Available plugins
 
 * `echo`: Simple example plugin implementing an echo command.
