@@ -38,6 +38,18 @@ module.exports.provides = function(context) {
         name: function(name) {
             return getUserData(getRecordByUserName(name));
         },
+        owner: function() {
+            var ownerData = null;
+            _.some(_.pairs(users), function(recordPair) {
+                if (recordPair[1].authorityLevel ===
+                        authorityLevelsBySymbol['~']) {
+                    ownerData = getUserData(recordPair);
+                    return false;
+                }
+                return true;
+            });
+            return ownerData;
+        },
         UserAuthority: UserAuthority,
         authoritySymbols: authoritySymbols,
         authorityLevelsBySymbol: authorityLevelsBySymbol,
@@ -202,7 +214,7 @@ function UserData(id, record, context) {
 }
 
 function UserAuthority(specification) {
-    if (specification && specification._level !== undefined) {
+    if (_.isObject(specification) && specification._level !== undefined) {
         this._level = specification._level;
     } else {
         this._level = UserAuthority.resolveToLevel(
