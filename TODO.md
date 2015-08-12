@@ -1,7 +1,7 @@
 ## Core / miscellaneous
 
 * Retry queue for API calls
-* Interactive first-time setup 
+* Get rid of synchronous file reads during plugin load
 * Better documentation
 
 ## Services

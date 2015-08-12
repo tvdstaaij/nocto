@@ -1,24 +1,94 @@
 # nocto.js
 
-Nocto is a Node.js Telegram bot application with an asynchronous plugin-based
-architecture, using the official bot API. It relies on long polling to be
-rapidly notified of new messages.
+Nocto is a Node.js Telegram bot framework with an asynchronous plugin-based
+architecture, using the official bot API. It relies on long polling and
+ persistent connections to rapidly interact with Telegram.
 
-This project is under heavy development; consider it a useable alpha version.
+What can nocto do for you?
+* As a user, you can just run nocto with one or more existing plugins.
+* As a developer, you can utilize nocto's extensive framework to develop
+  custom plugins without having to reinvent the wheel all the time. Nocto
+  provides much more functionality than a simple API wrapper does.
+
+The core functionality is still under development; consider it a beta version.
 
 ## Quickstart
 
-1. Make sure your installed Node.js version is 0.12 or higher.
-2. Install core bot dependencies with `npm install`. Then install dependencies
-   for any plugins you wish to use (`npm install` in their directory under
-   `plugins`). Or, run `./fullinstall.sh` to install core and all plugins.
-3. Create a `config/local.json`, overriding values from `config/default.json`
-   where desired. Specifying `api.token` is required. Note that only the `echo`
-   plugin is loaded and enabled by default.
-4. Make sure the user running the bot has read/write permission for the
-   directories `logs` and `persist`, unless you disable these features.
-5. Launch with `node nocto.js` or `npm start`. Note: in some operating systems
+1. Make sure your Node.js interpreter is version 0.12 or higher.
+2. Run `./fullinstall.sh` to install core and plugin dependencies with npm.
+3. Make sure the user running the bot has read/write permission for the
+   directories `logs`, `persist` and `config`.
+4. Launch with `node nocto.js` or `npm start`. Note: in some environments
    the `node` executable is called `nodejs` instead.
+5. Answer the questions asked by the first time setup wizard. If you don't have
+   an API token yet, request one from @BotFather on Telegram.
+6. Get on Telegram and claim ownership of the bot by sending the command
+   `/owner` in a private message or a group that the bot is a member of.
+7. List available plugins with `/plugins list`. You can enable any number of
+   plugins with `/plugins enable plugin1 plugin2`.
+
+## Available plugins
+
+* `echo`: Simple example plugin implementing an echo command.
+* `feedannounce`: RSS/Atom notifications configurable for either public or
+  private use (under heavy development).
+* `googleimages`: Shows Google search suggestions for a partial query.
+* `googlesuggest`: Grabs an image from Google Images. Optimized for reliability,
+  speed and anti-duplication.
+* `ircbridge`: Allows you to link IRC channels and Telegram groups, relaying
+  messages and events in one or both directions. Supports multiple IRC servers
+  and bridge routes.
+* `jukebox`: Grabs playable MP3 songs from Prostopleer.
+* `trace`: Logs properties of every incoming message to ease plugin development. 
+
+## Administration
+Basic plugin control commands:
+```
+/plugins list
+/plugins enable someplugin
+/plugins enable all
+/plugins disable someplugin
+/plugins disable all
+/plugins reload someplugin
+/plugins reload
+```
+* You can enter a space-separated lists of plugins for most commands.
+* `reload` performs a full disable-unload-load-enable cycle, only
+  enabling plugins that were already enabled. Reloading will force reading the
+  plugin files from disk, thus applying any changes to the plugin.
+
+Manipulating user authority:
+```
+/authority @target_user
+/authority @target_user administrator
+/ban @target_user
+```
+* Users must have sent at least one message that the bot has seen before they
+  can be assigned an authority.
+* Authority levels: `user` `trusted` `half-operator` `operator` `administrator`
+  `owner` (and `blacklisted`, which is set by `/ban`)
+* You can use either user IDs or @usernames.
+
+## Developing new plugins
+
+Plugins have their own directory in `plugins` and at least an executable file
+`plugins/myplugin/myplugin.js`. They can optionally have a `config.json`
+and/or an NPM `package.json` in the same directory. For now, reference the
+annotated `plugins/echo` as an example plugin (although this is not the only
+possible style for writing plugins). Your plugin can have its own dependencies, 
+submodules and data files if necessary.
+
+Nocto provides various services and utilities, such as persistent storage,
+user tracking, fluid builder patterns and state machines for session-based
+interaction. These features will be documented at a later time; if you want to
+ know how to make use of this take a look at existing plugins or ask the author.
+
+## Logging
+
+Logging is realized with `log4js` and defaults to dumping all messages except
+debug information to standard output and daily rotating files. Logging behavior
+can be customized in your local configuration file. Refer to the [log4js 
+documentation][1] for further details.
 
 ## Dependencies
 
@@ -41,34 +111,5 @@ The following applies regarding dependencies:
 * Services can depend on certain other services (e.g. plugin manager service
   requiring persistent storage for keeping track of enabled plugins).
 * Plugins do not depend on other plugins.
-
-## Available plugins
-
-* `echo`: Simple example plugin implementing an `/echo <message>` command.
-* `googlesuggest`: Shows Google search suggestions with `/suggest <query>`.
-* `ircbridge`: Allows you to link IRC channels and Telegram groups, relaying
-  messages and events in one or both directions. Supports multiple IRC servers
-  and bridge routes.
-* `trace`: Logs properties of every incoming message to ease plugin development. 
-
-Currently, the only way to enable plugins is to add them to the `autoEnabled`
-list in the bot configuration. In the future it will be possible to
-interactively enable/disable/reload plugins from Telegram.
-
-## Developing new plugins
-
-Plugins have their own directory in `plugins` and at least an executable file
-`plugins/my_plugin/my_plugin.js`. They can optionally have a `config.json`
-and/or an NPM `package.json` in the same directory. For now, reference the
-annotated `plugins/echo` as an example plugin (although this is not the only
-possible style for writing plugins). Your plugin can have its own dependencies, 
-submodules and data files if necessary.
-
-## Logging
-
-Logging is realized with `log4js` and defaults to dumping all messages except
-debug information to standard output and daily rotating files. Logging behavior
-can be customized in your local configuration file. Refer to the [log4js 
-documentation][1] for further details.
 
 [1]: https://github.com/nomiddlename/log4js-node#configuration
