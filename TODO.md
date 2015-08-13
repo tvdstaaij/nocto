@@ -6,7 +6,6 @@
 
 ## Services
 
-* Origin-based message filtering (fromKnown, fromPrivileged, fromChannel etc)
 * Message throttling / anti-spam
 * Database support (probably MongoDB)
 * Help system
