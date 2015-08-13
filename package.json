@@ -4,7 +4,8 @@
     "version": "0.7.0",
     "main": "nocto.js",
     "scripts": {
-        "start": "node nocto.js"
+        "start": "node nocto.js",
+        "setup": "node setupwizard.js --runwizard"
     },
     "repository": "tvdstaaij/nocto",
     "engines": {

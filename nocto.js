@@ -23,9 +23,12 @@ if (!setupWizard.isConfigCustomized()) {
     log.info('Starting interactive setup wizard');
     process.stdout.write(os.EOL);
     // setupWizard.exec deliberately blocks the process until it finishes
-    if (!setupWizard.exec()) {
-        log.fatal('Failed to create configuration. Please correct the error ' +
-                  'and try again, or create config/local.json manually.');
+    var setupWizardOk = setupWizard.exec();
+    process.stdout.write(os.EOL);
+    if (!setupWizardOk) {
+        log.fatal('Setup wizard was aborted, not starting bot. If there was ' +
+                  'some kind of problem, please correct the error and try ' +
+                  'again, or create config/local.json manually.');
         process.exit(1);
     }
 }
