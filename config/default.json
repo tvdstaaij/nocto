@@ -62,14 +62,15 @@
     },
 
     "services": {
-        // List of optional bot components to load
+        // List of optional bot components to load (ordered from high to low processing priority)
         // Plugins may depend on some of these, and services may depend on other services
         "register": [
             "userdata",
             "persist",
             "emoji",
             "interact",
-            "pluginctl"
+            "pluginctl",
+            "firewall"
         ],
 
         // Service-specific configuration options
@@ -77,6 +78,17 @@
             "interact": {
                 // Time to wait before resetting state, or 0 for indefinite [ms]
                 "defaultTimeout": 60000
+            },
+            "firewall": {
+                // Minimum user authority levels to accept these types of messages
+                // See readme for available authority levels ("user" amounts to a stranger)
+                // Alternatively, "known" requires a user with at least one group in common with the bot
+                "rules": {
+                    "privateCommand": "user",
+                    "groupCommand": "user",
+                    "privateMessage": "user",
+                    "groupMessage": "user"
+                }
             }
         }
     },
@@ -98,7 +110,8 @@
         "levels": {
             "nocto": "DEBUG",
             "tgbot": "DEBUG",
-            "plugins": "DEBUG"
+            "plugins": "DEBUG",
+            "firewall": "DEBUG"
         }
     },
 
