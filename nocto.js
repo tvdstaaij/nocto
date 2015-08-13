@@ -130,12 +130,6 @@ var serviceResources = {
 };
 
 bot.on('messageReceived', function(message, meta) {
-    // This is a candidate for refactoring into a service / filter
-    // Would also make it possible to use resources like persistent storage
-    if (config.get('behavior.allowPrivate.fromAll') === false &&
-        meta.private) {
-        return;
-    }
     // Pass message through service filters
     Promise.each(messageFilterServices, function(serviceName) {
         var service = services[serviceName];

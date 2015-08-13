@@ -27,14 +27,6 @@
     },
     
     "behavior": {
-        // Whether to process or drop messages sent directly to the bot
-        // Options for more detailed control will be added later
-        // Set everything to false to completely block private messages
-        "allowPrivate": {
-            // If true, accept private messages from strangers
-            "fromAll": true
-        },
-        
         // Array of prefix strings to recognize as a command message
         "commandPrefix": [ "/" ]
     },
