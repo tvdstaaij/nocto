@@ -16,12 +16,12 @@
         "config": "^1.14.0",
         "inquirer": "~0.9.0",
         "lodash": "^3.10.0",
-        "log4js": "~0.6.26",
-        "request": "^2.58.0"
+        "log4js": "~0.6.27",
+        "request": "^2.65.0"
     },
     "optionalDependencies": {
         "emoji-data": "^0.2.0",
-        "emoji-regex": ">=6.0.0",
+        "emoji-regex": "^6.0.0",
         "observed": "^1.1.1",
         "store": "alexkwolfe/node-store#d6819f7ea9e612d00aec08d485266c65a504be92"
     },
