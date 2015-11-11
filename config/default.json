@@ -10,7 +10,7 @@
         // Telegram bot API token {override}
         "token": "",
         // Location of Telegram bot API
-        "baseUri": "https://api.telegram.org/bot",
+        "baseUri": "https://api.telegram.org",
         // Time before failing API call [ms]
         "callTimeout": 5000,
         // Wait time before retrying a failed long poll, if retry is desired [ms]
