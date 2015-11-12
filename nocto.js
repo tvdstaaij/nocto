@@ -36,6 +36,7 @@ if (!setupWizard.isConfigCustomized()) {
 // Config module and modules requiring config must be loaded after setup wizard
 var config = require('config');
 var PluginManager = require('./lib/pluginmanager.js');
+var web = config.get('web.enabled') ? require('./lib/web.js') : null;
 
 log4js.configure(config.get('log'));
 
@@ -44,9 +45,10 @@ var appInfo = {
     root: __dirname,
     identifier: pjson.name + '/' + pjson.version
 };
+var bootStep = 0;
 
 log.info('# Initializing ' + appInfo.identifier + ' #');
-log.info('[1] Setup components and hooks');
+logBootStep('Setup components and hooks');
 
 process.on('unhandledRejection', function(error) {
     log.warn('Unhandled failure: ', error);
@@ -115,7 +117,8 @@ var bot = new TgBot(_.extend(config.get('api'), {
 
 var pluginResources = {
     api: bot.api,
-    app: appInfo
+    app: appInfo,
+    web: web ? web.toPluginResource() : null
 };
 var plugins = new PluginManager(_.extend(config.get('plugins'), {
     basePath: path.join(__dirname, 'plugins')
@@ -126,7 +129,8 @@ var serviceResources = {
     app: appInfo,
     bot: bot,
     plugins: plugins,
-    config: config
+    config: config,
+    web: web ? web.toServiceResource() : null
 };
 
 bot.on('messageReceived', function(message, meta) {
@@ -170,6 +174,10 @@ bot.on('messageReceived', function(message, meta) {
     });
 });
 
+function logBootStep(description) {
+    log.info('[' + String(++bootStep) + '] ' + description);
+}
+
 function watchPluginResult(name, operation, promise) {
     var succeedFunc = _.partial(logPluginResult, name, operation, undefined);
     var failFunc = _.partial(logPluginResult, name, operation);
@@ -203,7 +211,7 @@ function getMe() {
     if (config.api.disable) {
         return Promise.resolve();
     }
-    log.info('[2] Contact Telegram API');
+    logBootStep('Contact Telegram API');
     return bot.api.getMe({}, {cache: false});
 }
 
@@ -211,7 +219,7 @@ function getMe() {
 // on each other
 function initServices() {
     var servicePromises = {};
-    log.info('[3] Load services (' + serviceNames.length + ')');
+    logBootStep('Load services (' + serviceNames.length + ')');
     serviceNames.forEach(function(serviceName) {
         var service = services[serviceName];
         var initResult = null;
@@ -257,7 +265,7 @@ function initServices() {
 // Boot step 3: load available plugins
 function loadPlugins() {
     var pluginLoadList = plugins.getNames();
-    log.info('[4] Load plugins (' + pluginLoadList.length + ')');
+    logBootStep('Load plugins (' + pluginLoadList.length + ')');
     var loadPromises = plugins.load(pluginLoadList);
     loadPromises = _.mapValues(loadPromises, function(promise, pluginName) {
         return watchPluginResult(pluginName, 'load', promise);
@@ -265,9 +273,18 @@ function loadPlugins() {
     return Promise.settle(_.toArray(loadPromises));
 }
 
+// Optional boot step: launch express app
+function startWebserver() {
+    if (!web) {
+        return Promise.resolve();
+    }
+    logBootStep('Starting webserver');
+    return web.start();
+}
+
 // Boot step 4: enable plugins in enable queue
 function enablePlugins() {
-    log.info('[5] Enable plugins (' + plugins.getEnableQueueSize() + ')');
+    logBootStep('Enable plugins (' + plugins.getEnableQueueSize() + ')');
     var enablePromises = plugins.enableQueued();
     enablePromises = _.mapValues(enablePromises, function(promise, pluginName) {
         return watchPluginResult(pluginName, 'enable', promise);
@@ -280,38 +297,49 @@ function startPoll() {
     if (config.api.disable) {
         return;
     }
-    log.info('[6] Start long polling loop');
+    logBootStep('Start long polling loop');
     bot.poll.start();
 }
 
 getMe()
-.tap(function(identity) {
-    if (identity) {
-        log.info(' > My user ID is #' + identity.id);
-        log.info(' > My username is @' + identity.username);
-        log.info(' > My display name is ' + identity.first_name);
-    }
-})
-.catch(function(error) {
-    if (config.get('api.mandatoryHandshake')) {
-        log.fatal(' > Starting bot failed at the handshake phase:', error);
+    .tap(function(identity) {
+        if (identity) {
+            log.info(' > My user ID is #' + identity.id);
+            log.info(' > My username is @' + identity.username);
+            log.info(' > My display name is ' + identity.first_name);
+        }
+    })
+    .catch(function(error) {
+        if (config.get('api.mandatoryHandshake')) {
+            log.fatal(' > Starting bot failed at the handshake phase:', error);
+            process.exit(config.get('exitCodes.botStartFailed'));
+        } else {
+            log.error(' > API handshake failed:', error);
+        }
+    })
+    .then(initServices)
+    .catch(function() {
         process.exit(config.get('exitCodes.botStartFailed'));
-    } else {
-        log.error(' > API handshake failed:', error);
-    }
-})
-.then(initServices)
-.catch(function() {
-    process.exit(config.get('exitCodes.botStartFailed'));
-})
-.then(loadPlugins)
-.catch(function(){}) // Plugin errors are non-critical, swallow and continue
-.then(enablePlugins)
-.catch(function(){})
-.then(startPoll)
-.tap(function() {
-    log.info('# Initialization complete #');
-}).catch(function (error) {
-    log.fatal('Unhandled error during init: ', error);
-    process.exit(config.get('exitCodes.botStartFailed'));
-});
+    })
+    .then(loadPlugins)
+    .catch(function(){}) // Plugin errors are non-critical, swallow and continue
+    .then(startWebserver)
+    .tap(function(port) {
+        if (port) {
+            log.info(' > Listening on port ' + port);
+        }
+    })
+    .catch(function(error) {
+        log.error(' > Starting webserver failed:', error);
+        process.exit(config.get('exitCodes.botStartFailed'));
+    })
+    .then(enablePlugins)
+    .catch(function(){})
+    .then(startPoll)
+    .tap(function() {
+        log.info('# Initialization complete #');
+    })
+    .catch(function (error) {
+        log.fatal('Unhandled error during init: ', error);
+        process.exit(config.get('exitCodes.botStartFailed'));
+    });
