@@ -487,7 +487,8 @@ function formatTelegramEvent(message, options) {
             lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
         });
     } else if (message.meta.permalink) {
-        lines.push(message.meta.permalink);
+        lines.push(username + config.telegramUserSuffix +
+            ' sent ' + message.meta.permalink);
     }
     return lines;
 }

@@ -68,7 +68,7 @@ module.exports.handleMessage = function(message, meta) {
 
     var suffix = '';
     if (_.isString(file.file_name)) {
-        suffix = '/' + file.file_name;
+        suffix = '/' + encodeURIComponentPlus(file.file_name);
     }
     if (!suffix && media.type === 'voice' &&
         _.endsWith(file.mime_type, 'ogg')) {
