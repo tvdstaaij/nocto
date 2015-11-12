@@ -1,0 +1,9 @@
+{
+    "name": "stickersource",
+    "version": "0.1.0",
+    "main": "stickersource.js",
+    "dependencies": {
+        "cwebp": "^1.1.0",
+        "imagemin": "^4.0.0"
+    }
+}
