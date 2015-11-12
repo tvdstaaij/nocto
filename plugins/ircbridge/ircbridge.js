@@ -115,6 +115,7 @@ handlers.handleMessage = function(message, meta) {
         }
     }
 
+    message.meta = meta;
     relayTelegramEvent(message, relayOptions);
 };
 
@@ -485,6 +486,8 @@ function formatTelegramEvent(message, options) {
             }
             lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
         });
+    } else if (message.meta.permalink) {
+        lines.push(message.meta.permalink);
     }
     return lines;
 }
