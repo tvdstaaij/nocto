@@ -5,12 +5,16 @@ var url = require('url');
 var mime = require('mime-types');
 var botUtil = require('../lib/utilities.js');
 
+var svcConfig = _.get(config, 'services.config.mediaproxy') || {};
 var proxy = httpProxy.createProxyServer();
+var permalinks = {};
+var api, log;
 
-module.exports.init = function(resources) {
-    var api = resources.bot.api;
+module.exports.init = function(resources, service) {
+    api = resources.bot.api;
+    log = resources.log;
     var app = resources.web.app;
-    var log = resources.log;
+    var fileInfoCache;
 
     function handleMediaRequest(req, res, next) {
         var id = req.params.id;
@@ -18,15 +22,25 @@ module.exports.init = function(resources) {
         if (extensionDot > 0) {
             id = id.substr(0, extensionDot);
         }
+
         var mimeType = mime.lookup(req.originalUrl);
         if (mimeType) {
             rewriteResponseHeaders(res, {'content-type': mimeType});
         }
 
-        api.getFile({file_id: id})
+        fileInfoCache.resolve(id)
             .then(function(fileInfo) {
                 var targetUriComponents = url.parse(api.getFileUri(fileInfo));
                 req.url = targetUriComponents.path;
+                req.headers = _.omit(req.headers, [
+                    'cookie', 'dnt', 'accept', 'upgrade-insecure-requests',
+                    'accept-language', 'origin', 'upgrade', 'via', 'referer'
+                ]);
+                req.headers = _.omit(req.headers, function(value, header) {
+                    return _.endsWith(header, 'authorization') ||
+                        _.startsWith(header, 'x-');
+                });
+                req.headers['user-agent'] = resources.app.identifier;
                 proxy.web(req, res, proxyOptions);
             })
             .catch(_.ary(next, 0));
@@ -47,10 +61,24 @@ module.exports.init = function(resources) {
         log.error(err);
     });
 
-    app.get('/media/:id*', handleMediaRequest);
+    return botUtil.loadServiceDependencies(['fileinfocache'], service)
+        .then(function(services) {
+            fileInfoCache = services.fileinfocache;
+            app.get('/media/:id*', handleMediaRequest);
+        });
 };
 
 module.exports.handleMessage = function(message, meta) {
+    var chatId = message.chat.id;
+    var command = meta.command;
+    if (String(_.get(command, 'name')) === 'permalink') {
+        var requiredAuthority = _.get(svcConfig, 'privileges.permalink');
+        if (!requiredAuthority ||
+            (meta.authority && meta.authority.isAtLeast(requiredAuthority))) {
+            return servePermalink(chatId, command.argumentTokens[0]);
+        }
+    }
+
     var media = botUtil.extractMediaObject(message);
     if (!media) {
         return;
@@ -60,39 +88,35 @@ module.exports.handleMessage = function(message, meta) {
         return;
     }
     var uri = config.get('web.baseUri') + '/media/' + file.file_id;
+
+    var audioMetaProps = [];
     _.forEach(['performer', 'title'], function(metaProp) {
         if (_.isString(file[metaProp])) {
-            uri += '/' + encodeURIComponentPlus(file[metaProp]);
+            audioMetaProps.push(file[metaProp]);
         }
     });
+    if (!_.isEmpty(audioMetaProps)) {
+        uri += '/' + encodeURIComponentPlus(audioMetaProps.join(' - '));
+    }
 
-    var suffix = '';
-    if (_.isString(file.file_name)) {
-        suffix = '/' + encodeURIComponentPlus(file.file_name);
-    }
-    if (!suffix && media.type === 'voice' &&
-        _.endsWith(file.mime_type, 'ogg')) {
-        suffix = '.ogg';
-    }
-    if (!suffix && _.isString(file.mime_type)) {
-        var extension = mime.extension(file.mime_type);
-        if (_.isString(extension)) {
-            suffix = '.' + extension;
-        } else {
-            suffix = file.mime_type.replace(/^[^\/]*\//, '.');
-        }
-    }
-    if (!suffix && media.type === 'sticker') {
-        suffix = '.webp';
-    }
-    if (!suffix && media.type === 'photo') {
-        suffix = '.jpg';
-    }
-    if (!suffix && media.type === 'voice') {
-        suffix = '.opus';
-    }
-    meta.permalink = uri + suffix;
+    meta.permalink = uri + makeFileSuffix(media);
+    permalinks[chatId] = permalinks[chatId] || [];
+    permalinks[chatId].push(meta.permalink);
 };
+
+function servePermalink(chatId, offset) {
+    offset = Number(offset || 0);
+    var scopedPermalinks = permalinks[chatId];
+    if (!_.isFinite(offset) || _.isEmpty(scopedPermalinks)) {
+        return;
+    }
+    offset = Math.abs(offset);
+    var index = scopedPermalinks.length - offset - 1;
+    if (index < 0 || !scopedPermalinks[index]) {
+        return;
+    }
+    return new api.MessageBuilder(chatId).text(scopedPermalinks[index]).send();
+}
 
 function rewriteResponseHeaders(res, rewrites) {
     var _writeHead = res.writeHead;
@@ -106,4 +130,42 @@ function rewriteResponseHeaders(res, rewrites) {
 
 function encodeURIComponentPlus(component) {
     return encodeURIComponent(component).replace(/%20/g, '+');
+}
+
+function makeFileSuffix(media) {
+    var suffix = '';
+    var file = media.object;
+    var type = media.type;
+
+    // Strategy 1: use real filename if known
+    if (_.isString(file.file_name)) {
+        suffix = '/' + encodeURIComponentPlus(file.file_name);
+    }
+
+    // Strategy 2: use mime type to find an appropriate extension if it is known
+    var preferredExtensions = ['mp3', 'ogg', 'jpg'];
+    if (!suffix && _.isString(file.mime_type)) {
+        var extensions = mime.extensions[file.mime_type] || [];
+        var preferredMatches = _.intersection(extensions, preferredExtensions);
+        if (!_.isEmpty(preferredMatches)) {
+            suffix = '.' + _.first(preferredMatches);
+        } else if (!_.isEmpty(extensions)) {
+            suffix = '.' + _.first(extensions);
+        } else {
+            suffix = file.mime_type.replace(/^[^\/]*\//, '.');
+        }
+    }
+
+    // Strategy 3: guess appropriate extension based on Telegram media type
+    if (!suffix && type === 'sticker') {
+        suffix = '.webp';
+    }
+    if (!suffix && type === 'photo') {
+        suffix = '.jpg';
+    }
+    if (!suffix && type === 'voice') {
+        suffix = '.opus';
+    }
+
+    return suffix;
 }

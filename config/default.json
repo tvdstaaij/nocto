@@ -71,7 +71,8 @@
             "emoji",
             "interact",
             "pluginctl",
-            "firewall"
+            "firewall",
+            "fileinfocache"
         ],
 
         // Service-specific configuration options
@@ -90,6 +91,16 @@
                     "privateMessage": "user",
                     "groupMessage": "user"
                 }
+            },
+            "mediaproxy": {
+                "privileges": {
+                    // Who is allowed to request file permalinks
+                    "permalink": "user"
+                }
+            },
+            "fileinfocache": {
+                // File download link expiry time (specified by bot API docs)
+                "expires": 3600
             }
         }
     },
