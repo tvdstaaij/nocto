@@ -87,9 +87,8 @@ function runWizard() {
         ]);
     }).then(function(answers) {
         config.api.token = answers.apiToken;
-        if (answers.autoLoadPlugins) {
-            config.plugins.loadAll = true;
-        } else {
+        if (!answers.autoLoadPlugins) {
+            config.plugins.loadAll = false;
             config.plugins.register = [];
             config.plugins.autoEnabled = [];
             console.log('Note: you should specify which plugins to load and ' +
