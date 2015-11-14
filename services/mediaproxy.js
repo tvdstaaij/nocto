@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var config = require('config');
 var httpProxy = require('http-proxy');
+var Promise = require('bluebird');
 var url = require('url');
 var mime = require('mime-types');
 var botUtil = require('../lib/utilities.js');
@@ -23,10 +24,16 @@ module.exports.init = function(resources, service) {
             id = id.substr(0, extensionDot);
         }
 
+        var hooks = [];
         var mimeType = mime.lookup(req.originalUrl);
         if (mimeType) {
-            rewriteResponseHeaders(res, {'content-type': mimeType});
+            hooks.push(_.partial(rewriteResponseHeaders,
+                {'content-type': mimeType}));
         }
+        if (_.endsWith(req.originalUrl, '.webp')) {
+            hooks.push(decodeWebp);
+        }
+        installResponseHooks(res, hooks);
 
         fileInfoCache.resolve(id)
             .then(function(fileInfo) {
@@ -118,13 +125,62 @@ function servePermalink(chatId, offset) {
     return new api.MessageBuilder(chatId).text(scopedPermalinks[index]).send();
 }
 
-function rewriteResponseHeaders(res, rewrites) {
+function rewriteResponseHeaders(rewrites) {
+    _.forEach(rewrites, function(value, header) {
+        this.setHeader(header, value);
+    }, this);
+}
+
+function decodeWebp() {
+    var res = this;
+    res.removeHeader('transfer-encoding');
+    res.removeHeader('accept-ranges');
+    var buf = new Buffer(0);
+    var _write = res.write;
+    var _end = res.end;
+
+    res.write = function(data) {
+        if (Buffer.isBuffer(data)) {
+            buf = Buffer.concat([buf, data]);
+        }
+    };
+
+    return new Promise(function(resolve) {
+        res.end = function(data, encoding) {
+            if (data) {
+                res.write(data, encoding);
+            }
+            res.write = _write;
+            res.setHeader('content-length', buf.length);
+            resolve({postHeaderFlush: function() {
+                _end.call(res, buf);
+            }});
+        };
+    });
+}
+
+function installResponseHooks(res, hooks) {
+    if (_.isEmpty(hooks)) {
+        return;
+    }
     var _writeHead = res.writeHead;
-    res.writeHead = function(statusCode, headers) {
-        _.forEach(rewrites, function(value, header) {
-            res.setHeader(header, value);
+    res.writeHead = function() {
+        var promises = _.map(hooks, function(hook) {
+            return hook.call(res);
         });
-        _writeHead.call(res, statusCode, headers);
+        var writeHeadArgs = arguments;
+        Promise.settle(promises)
+            .then(function(results) {
+                _writeHead.apply(res, writeHeadArgs);
+                _.forEach(results, function(result) {
+                    if (result.isFulfilled()) {
+                        var value = result.value();
+                        if (_.get(value, 'postHeaderFlush')) {
+                            value.postHeaderFlush.call(value);
+                        }
+                    }
+                });
+            });
     };
 }
 
