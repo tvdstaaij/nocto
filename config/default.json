@@ -37,7 +37,9 @@
         // Port to listen on (you typically want to reverse proxy this through a standalone webserver)
         "port": 3000,
         // Externally accessible at this location (used when generating links)
-        "baseUri": "http://localhost:3000"
+        "baseUri": "http://localhost:3000",
+        // Output trace of unhandled errors (for development / private environments)
+        "stackTrace:": false
     },
 
     "plugins": {
@@ -96,7 +98,8 @@
                 "privileges": {
                     // Who is allowed to request file permalinks
                     "permalink": "user"
-                }
+                },
+                "decodeWebp": true
             },
             "fileinfocache": {
                 // File download link expiry time (specified by bot API docs)

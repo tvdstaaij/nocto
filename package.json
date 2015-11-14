@@ -1,7 +1,7 @@
 {
   "name": "nocto",
   "description": "Modular Telegram bot using the official bot API",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "main": "nocto.js",
   "scripts": {
     "start": "node nocto.js",
@@ -20,10 +20,12 @@
     "request": "^2.65.0"
   },
   "optionalDependencies": {
+    "cwebp": "^1.1.0",
     "emoji-data": "^0.2.0",
     "emoji-regex": "^6.0.0",
     "express": "^4.13.3",
     "http-proxy": "^1.12.0",
+    "imagemin": "tvdstaaij/imagemin",
     "mime-types": "^2.1.7",
     "observed": "^1.1.1",
     "store": "alexkwolfe/node-store#d6819f7ea9e612d00aec08d485266c65a504be92"

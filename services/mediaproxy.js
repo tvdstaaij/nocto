@@ -9,12 +9,12 @@ var botUtil = require('../lib/utilities.js');
 var svcConfig = _.get(config, 'services.config.mediaproxy') || {};
 var proxy = httpProxy.createProxyServer();
 var permalinks = {};
-var api, log;
+var api, log, stickerDecoder;
 
 module.exports.init = function(resources, service) {
     api = resources.bot.api;
     log = resources.log;
-    var app = resources.web.app;
+    var app = _.get(resources.web, 'app');
     var fileInfoCache;
 
     function handleMediaRequest(req, res, next) {
@@ -30,8 +30,9 @@ module.exports.init = function(resources, service) {
             hooks.push(_.partial(rewriteResponseHeaders,
                 {'content-type': mimeType}));
         }
-        if (_.endsWith(req.originalUrl, '.webp')) {
-            hooks.push(decodeWebp);
+        if (svcConfig.decodeWebp &&
+            _.endsWith(req.originalUrl.toLowerCase(), '.webp.png')) {
+            hooks.push({func: decodeWebp, buffer: true});
         }
         installResponseHooks(res, hooks);
 
@@ -50,7 +51,10 @@ module.exports.init = function(resources, service) {
                 req.headers['user-agent'] = resources.app.identifier;
                 proxy.web(req, res, proxyOptions);
             })
-            .catch(_.ary(next, 0));
+            .catch(function(error) {
+                log.error(error);
+                next(error);
+            });
     }
 
     var proxyOptions = {
@@ -59,7 +63,8 @@ module.exports.init = function(resources, service) {
         target: (function() {
             var baseUriComponents = url.parse(config.get('api.baseUri'));
             return baseUriComponents.protocol + '//' + baseUriComponents.host;
-        })()
+        })(),
+        secure: config.get('api.strictSSL')
     };
 
     proxy.on('error', function(err, req, res) {
@@ -68,9 +73,16 @@ module.exports.init = function(resources, service) {
         log.error(err);
     });
 
-    return botUtil.loadServiceDependencies(['fileinfocache'], service)
+    return botUtil.loadServiceDependencies([
+            'fileinfocache', 'stickerdecoder'
+        ], service)
         .then(function(services) {
             fileInfoCache = services.fileinfocache;
+            stickerDecoder = services.stickerdecoder;
+            if (!app) {
+                log.warn('web.enabled=false, not serving any files');
+                return;
+            }
             app.get('/media/:id*', handleMediaRequest);
         });
 };
@@ -125,19 +137,27 @@ function servePermalink(chatId, offset) {
     return new api.MessageBuilder(chatId).text(scopedPermalinks[index]).send();
 }
 
-function rewriteResponseHeaders(rewrites) {
+function rewriteResponseHeaders(rewrites, res) {
     _.forEach(rewrites, function(value, header) {
-        this.setHeader(header, value);
+        res.setHeader(header, value);
     }, this);
 }
 
-function decodeWebp() {
-    var res = this;
-    res.removeHeader('transfer-encoding');
+function decodeWebp(res, status) {
     res.removeHeader('accept-ranges');
+    if (status !== 200) {
+        res.removeHeader('content-type');
+        return;
+    }
+
     var buf = new Buffer(0);
     var _write = res.write;
     var _end = res.end;
+
+    function flushResponse(data) {
+        res.write = _write;
+        _end.call(res, data);
+    }
 
     res.write = function(data) {
         if (Buffer.isBuffer(data)) {
@@ -150,11 +170,33 @@ function decodeWebp() {
             if (data) {
                 res.write(data, encoding);
             }
-            res.write = _write;
-            res.setHeader('content-length', buf.length);
-            resolve({postHeaderFlush: function() {
-                _end.call(res, buf);
-            }});
+            if (res.statusCode !== 200) {
+                return resolve({
+                    postHeaderFlush: _.partial(flushResponse, buf)
+                });
+            }
+
+            var decodePromise = stickerDecoder.decode(buf)
+                .then(function(result) {
+                    res.setHeader('content-length', result.length);
+                    res.setHeader('content-type', 'image/png');
+                    res.removeHeader('transfer-encoding');
+                    return {
+                        postHeaderFlush: _.partial(flushResponse, result)
+                    };
+                })
+                .catch(function(error) {
+                    log.error('Decode error:', error);
+                    res.setHeader('content-type', 'text/html');
+                    var payload = new Buffer('Internal Server Error');
+                    res.setHeader('content-length', payload.length);
+                    return {
+                        status: 500,
+                        postHeaderFlush:
+                            _.partial(flushResponse, payload)
+                    };
+                });
+            resolve(decodePromise);
         };
     });
 }
@@ -164,24 +206,55 @@ function installResponseHooks(res, hooks) {
         return;
     }
     var _writeHead = res.writeHead;
-    res.writeHead = function() {
+    var _end = res.end;
+    var endArgs = null;
+
+    res.writeHead = _.once(function(status) {
+        var postponeHeaders = false;
         var promises = _.map(hooks, function(hook) {
-            return hook.call(res);
+            if (hook.buffer) {
+                postponeHeaders = true;
+                res.end = function() {
+                    endArgs = arguments;
+                };
+            }
+            hook = _.isFunction(hook) ? hook : hook.func;
+            return hook.call(res, res, status);
         });
         var writeHeadArgs = arguments;
+        if (!postponeHeaders) {
+            _writeHead.apply(res, writeHeadArgs);
+        }
         Promise.settle(promises)
             .then(function(results) {
-                _writeHead.apply(res, writeHeadArgs);
+                _.forEach(results, function(result) {
+                    if (result.isFulfilled()) {
+                        var value = result.value();
+                        if (_.get(value, 'status')) {
+                            writeHeadArgs[0] = value.status;
+                        }
+                    }
+                });
+                if (postponeHeaders) {
+                    _writeHead.apply(res, writeHeadArgs);
+                }
                 _.forEach(results, function(result) {
                     if (result.isFulfilled()) {
                         var value = result.value();
                         if (_.get(value, 'postHeaderFlush')) {
-                            value.postHeaderFlush.call(value);
+                            value.postHeaderFlush.call(res);
                         }
                     }
                 });
+                if (postponeHeaders) {
+                    if (endArgs) {
+                        _end.apply(res, endArgs);
+                    } else {
+                        _end.call(res);
+                    }
+                }
             });
-    };
+    });
 }
 
 function encodeURIComponentPlus(component) {
@@ -214,7 +287,10 @@ function makeFileSuffix(media) {
 
     // Strategy 3: guess appropriate extension based on Telegram media type
     if (!suffix && type === 'sticker') {
-        suffix = '.webp';
+        suffix = '/sticker.webp';
+        if (svcConfig.decodeWebp) {
+            suffix += '.png';
+        }
     }
     if (!suffix && type === 'photo') {
         suffix = '.jpg';
