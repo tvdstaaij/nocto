@@ -74,7 +74,8 @@
             "interact",
             "pluginctl",
             "firewall",
-            "fileinfocache"
+            "fileinfocache",
+            "stickerdecoder"
         ],
 
         // Service-specific configuration options
@@ -104,6 +105,9 @@
             "fileinfocache": {
                 // File download link expiry time (specified by bot API docs)
                 "expires": 3600
+            },
+            "stickerdecoder": {
+                "optimizationLevel": 2
             }
         }
     },

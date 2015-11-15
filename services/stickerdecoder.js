@@ -1,4 +1,5 @@
 var _ = require('lodash');
+var config = require('config');
 var Promise = require('bluebird');
 var botUtil = require('../lib/utilities.js');
 
@@ -8,6 +9,7 @@ if (Imagemin) {
     Promise.promisifyAll(Imagemin.prototype);
 }
 
+var svcConfig = _.get(config, 'services.config.stickerdecoder') || {};
 var methods = {};
 
 methods.decode = function(input) {
@@ -18,7 +20,9 @@ methods.decode = function(input) {
 methods.optimize = function(input) {
     return new Imagemin()
         .src(input)
-        .use(Imagemin.optipng())
+        .use(Imagemin.optipng({
+            optimizationLevel: svcConfig.optimizationLevel
+        }))
         .runAsync()
         .spread(function(result) {
             return result;
