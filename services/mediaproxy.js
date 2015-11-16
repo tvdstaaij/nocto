@@ -134,7 +134,10 @@ function servePermalink(chatId, offset) {
     if (index < 0 || !scopedPermalinks[index]) {
         return;
     }
-    return new api.MessageBuilder(chatId).text(scopedPermalinks[index]).send();
+    return new api.MessageBuilder(chatId)
+        .text(scopedPermalinks[index])
+        .webPreview(false)
+        .send();
 }
 
 function rewriteResponseHeaders(rewrites, res) {
