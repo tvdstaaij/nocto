@@ -9,7 +9,7 @@ var botUtil = require('../lib/utilities.js');
 var svcConfig = _.get(config, 'services.config.mediaproxy') || {};
 var proxy = httpProxy.createProxyServer();
 var permalinks = {};
-var api, log, stickerDecoder;
+var api, log, stickerCodec;
 
 module.exports.init = function(resources, service) {
     api = resources.bot.api;
@@ -74,11 +74,11 @@ module.exports.init = function(resources, service) {
     });
 
     return botUtil.loadServiceDependencies([
-            'fileinfocache', 'stickerdecoder'
+            'fileinfocache', 'stickercodec'
         ], service)
         .then(function(services) {
             fileInfoCache = services.fileinfocache;
-            stickerDecoder = services.stickerdecoder;
+            stickerCodec = services.stickerCodec;
             if (!app) {
                 log.warn('web.enabled=false, not serving any files');
                 return;
@@ -176,7 +176,7 @@ function decodeWebp(res, status) {
                 });
             }
 
-            var decodePromise = stickerDecoder.decode(buf)
+            var decodePromise = stickerCodec.decode(buf)
                 .then(function(result) {
                     res.setHeader('content-length', result.length);
                     res.setHeader('content-type', 'image/png');

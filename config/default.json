@@ -75,7 +75,7 @@
             "pluginctl",
             "firewall",
             "fileinfocache",
-            "stickerdecoder"
+            "stickercodec"
         ],
 
         // Service-specific configuration options
@@ -106,7 +106,7 @@
                 // File download link expiry time (specified by bot API docs)
                 "expires": 3600
             },
-            "stickerdecoder": {
+            "stickercodec": {
                 "optimizationLevel": 2
             }
         }

@@ -9,7 +9,7 @@ if (Imagemin) {
     Promise.promisifyAll(Imagemin.prototype);
 }
 
-var svcConfig = _.get(config, 'services.config.stickerdecoder') || {};
+var svcConfig = _.get(config, 'services.config.stickercodec') || {};
 var methods = {};
 
 methods.decode = function(input) {
@@ -17,7 +17,12 @@ methods.decode = function(input) {
     return Promise.resolve(decoder.toBuffer());
 };
 
-methods.optimize = function(input) {
+methods.encode = function(input) {
+    var encoder = new cwebp.CWebp(input);
+    return Promise.resolve(encoder.toBuffer());
+};
+
+methods.optimizeDecoded = function(input) {
     return new Imagemin()
         .src(input)
         .use(Imagemin.optipng({
