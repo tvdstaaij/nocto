@@ -79,27 +79,51 @@ handlers.handleMessage = function(message, meta) {
     };
     var command = meta.command;
     if (command) {
+        var chatId = message.chat.id;
         switch (command.name) {
         case 'names':
-            if (command.argumentTokens.length) {
-                sendNamesRequest(message.chat.id, command.argumentTokens[0]);
+            var channel = null;
+            if (command.argumentTokens.length === 1) {
+                channel = command.argumentTokens[0];
+            } else if (command.argumentTokens.length === 0) {
+                var matches = findChannelsForGroup(chatId);
+                if (matches.length === 1) {
+                    channel = _.first(matches);
+                }
+            }
+            if (channel) {
+                sendNamesRequest(chatId, channel);
+            } else {
+                api.sendMessage({
+                    chat_id: chatId,
+                    text: 'Wrong number of arguments.'
+                });
             }
             return;
         case 'whois':
-            if (command.argumentTokens.length) {
-                sendWhoisRequest(
-                    message.chat.id, command.argumentTokens[0],
-                    command.argumentTokens.slice(1, 3).join(' ')
-                );
+            var channel = null;
+            if (command.argumentTokens.length === 2) {
+                channel = command.argumentTokens.shift();
+            } else if (command.argumentTokens.length === 1) {
+                var matches = findChannelsForGroup(chatId);
+                if (matches.length === 1) {
+                    channel = _.first(matches);
+                }
+            }
+            if (channel) {
+                sendWhoisRequest(chatId, channel, command.argumentTokens[0]);
+            } else {
+                api.sendMessage({
+                    chat_id: chatId,
+                    text: 'Wrong number of arguments.'
+                });
             }
             return;
         case 'setalias':
-            setAlias(message.chat.id, message.from.id,
-                     command.argumentTokens[0]);
+            setAlias(chatId, message.from.id, command.argumentTokens[0]);
             return;
         case 'setcolor':
-            setColor(message.chat.id, message.from.id,
-                     command.argumentTokens[0]);
+            setColor(chatId, message.from.id, command.argumentTokens[0]);
             return;
         case 'c':
             if (config.telegramComments) {
@@ -300,6 +324,7 @@ function relayIrcEvent(event, context) {
         var relayText = formatIrcEvent(eventCopy, context.ownUser);
         if (relayText) {
             api.sendMessage({
+                parse_mode: config.telegramMarkdown ? 'Markdown' : undefined,
                 chat_id: route.to,
                 text: relayText
             });
@@ -505,8 +530,11 @@ function sendWhoisRequest(telegramGroup, ircChannel, ircUser) {
     if (client) {
         client.whois(ircUser, function(whois) {
             api.sendMessage({
+                parse_mode: 'Markdown',
                 chat_id: telegramGroup,
-                text: JSON.stringify(whois, null, config.whoisIndenting)
+                text: wrapCodeBlock(
+                    JSON.stringify(whois, null, config.whoisIndenting)
+                )
             });
         });
     }
@@ -568,8 +596,16 @@ function findClientForChannel(channel, telegramGroup) {
     return client;
 }
 
+function findChannelsForGroup(telegramGroup) {
+    return _.pluck(_.filter(inboundRoutes, 'to', telegramGroup), 'from');
+}
+
 function isInChannel(channel, channels) {
     return channels.some(function(element) {
         return element.toLowerCase() === channel.toLowerCase();
     });
+}
+
+function wrapCodeBlock(text) {
+    return '```\n' + text + '\n```';
 }
