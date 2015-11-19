@@ -78,7 +78,7 @@ module.exports.init = function(resources, service) {
         ], service)
         .then(function(services) {
             fileInfoCache = services.fileinfocache;
-            stickerCodec = services.stickerCodec;
+            stickerCodec = services.stickercodec;
             if (!app) {
                 log.warn('web.enabled=false, not serving any files');
                 return;
