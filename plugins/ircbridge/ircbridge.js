@@ -7,7 +7,6 @@ var Promise = require('bluebird');
 var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
 var inboundRoutes = [], outboundRoutes = [], copyRoutes = [], readyServers = [];
-var forbidMarkdown = false;
 
 module.exports = function loadPlugin(resources, service) {
     log = resources.log;
@@ -322,23 +321,25 @@ function relayIrcEvent(event, context) {
         }
         relayedToGroups.push(route.to);
 
-        var relayText = formatIrcEvent(eventCopy, context.ownUser);
-        if (relayText) {
+        var output = formatIrcEvent(eventCopy, context.ownUser);
+        if (output) {
             api.sendMessage({
-                parse_mode: config.allowMarkdown ? 'Markdown' : undefined,
+                parse_mode: output.markdown ? 'Markdown' : undefined,
                 chat_id: route.to,
-                text: relayText
+                text: output.text
             })
                 .catch(function(error) {
                     var description = _.get(error, 'response.description');
-                    if (_.includes(description, 'parse message text')) {
-                        forbidMarkdown = true;
-                        var plain = formatIrcEvent(eventCopy, context.ownUser);
-                        forbidMarkdown = false;
+                    if (output.markdown &&
+                        _.includes(description, 'parse message text')) {
+                        output = formatIrcEvent(eventCopy, context.ownUser,
+                            {forcePlain: true});
                         api.sendMessage({
                             chat_id: route.to,
-                            text: plain
+                            text: output.text
                         });
+                    } else {
+                        throw error;
                     }
                 });
         }
@@ -432,6 +433,8 @@ function formatIrcEvent(event, ownUser, options) {
     } else {
         event.reason = '';
     }
+    var useMarkdown = (config.allowMarkdown && !options.forcePlain &&
+        _.contains(['message', 'notice', 'action'], event.type));
     if (!options.ircToIrc && event.text && config.ircEncodeEmoji) {
         event.text = emoji.namesToUnicode(event.text);
     }
@@ -440,52 +443,66 @@ function formatIrcEvent(event, ownUser, options) {
     }
     var userSuffix = config.ircUserSuffix ? '@' + event.channel : '';
 
-    switch (event.type) {
-    case 'message':
-    case 'notice':
-        return escapeMd('<' + event.from + userSuffix + '> ') + event.text;
-    case 'action':
-        return escapeMd('** ' + event.from + userSuffix + ' ') + event.text;
-    case 'join':
-        if (event.user === ownUser) {
-            return 'I am now attached to channel ' + escapeMd(event.channel);
+    function escapeMd(text) {
+        return useMarkdown ? api.escapeMarkdown(text) : text;
+    }
+
+    var output = (function() {
+        switch (event.type) {
+            case 'message':
+            case 'notice':
+                return escapeMd('<' + event.from + userSuffix + '> ') +
+                    event.text;
+            case 'action':
+                return escapeMd('** ' + event.from + userSuffix + ' ') +
+                    event.text;
+            case 'join':
+                if (event.user === ownUser) {
+                    return 'I am now attached to channel ' + event.channel;
+                }
+                return 'User ' + event.user +
+                    ' joined channel ' + event.channel;
+            case 'part':
+                if (event.user === ownUser) {
+                    return 'I am now detached from channel ' + event.channel;
+                }
+                return 'User ' + event.user + ' left channel ' +
+                    event.channel + ' (reason: "' + event.reason + '")';
+            case 'quit':
+                return 'User ' + event.user + ' disconnected (reason: "' +
+                    event.reason + '") and is no longer in channel(s) ' +
+                    event.channels.join(', ');
+            case 'kick':
+                var target = (event.user === ownUser) ? 'I' : 'User ' + event.user;
+                return target + ' was kicked from channel ' + event.channel +
+                    ' by ' + event.by + ' (reason: "' + event.reason + '")';
+            case 'nick':
+                if (event.user === ownUser) {
+                    return;
+                }
+                return 'User ' + event.from + ' is now known as ' + event.to +
+                    ' in channel(s) ' + event.channels.join(', ');
+            case 'topic':
+                return 'Topic for ' + event.channel + ' is "' + event.topic +
+                    '" (set by ' + event.user + ')';
+            case 'names':
+                return 'Other users in channel ' + event.channel + ': ' +
+                    Object.keys(event.users).filter(function (user) {
+                        return user !== ownUser;
+                    }).join(', ');
+            case 'mode':
+                var argument = event.argument ? ' ' + event.argument : '';
+                return event.by + ' applied mode ' + event.sign + event.mode +
+                    argument + ' to channel ' + event.channel;
+            default:
+                log.debug('Received unknown irc event ' + event.type);
         }
-        return escapeMd('User ' + event.user +
-            ' joined channel ' + event.channel);
-    case 'part':
-        if (event.user === ownUser) {
-            return escapeMd('I am now detached from channel ' + event.channel);
-        }
-        return escapeMd('User ' + event.user + ' left channel ' +
-               event.channel + ' (reason: "' + event.reason + '")');
-    case 'quit':
-        return escapeMd('User ' + event.user + ' disconnected (reason: "' +
-               event.reason + '") and is no longer in channel(s) ' +
-               event.channels.join(', '));
-    case 'kick':
-        var target = (event.user === ownUser) ? 'I' : 'User ' + event.user;
-        return escapeMd(target + ' was kicked from channel ' + event.channel +
-               ' by ' + event.by + ' (reason: "' + event.reason + '")');
-    case 'nick':
-        if (event.user === ownUser) {
-            return;
-        }
-        return escapeMd('User ' + event.from + ' is now known as ' + event.to +
-               ' in channel(s) ' + event.channels.join(', '));
-    case 'topic':
-        return escapeMd('Topic for ' + event.channel + ' is "' + event.topic +
-                '" (set by ' + event.user + ')');
-    case 'names':
-        return escapeMd('Other users in channel ' + event.channel + ': ' +
-                Object.keys(event.users).filter(function(user) {
-                    return user !== ownUser;
-                }).join(', '));
-    case 'mode':
-        var argument = event.argument ? ' ' + event.argument : '';
-        return escapeMd(event.by + ' applied mode ' + event.sign + event.mode +
-               argument + ' to channel ' + event.channel);
-    default:
-        log.debug('Received unknown irc event ' + event.type);
+    })();
+    if (output) {
+        return {
+            text: output,
+            markdown: useMarkdown
+        };
     }
 }
 
@@ -523,7 +540,8 @@ function formatTelegramEvent(message, options) {
                     username = irc.colors.wrap(color, username);
                 }
             }
-            lines.push('<' + username + config.telegramUserSuffix + '> ' + line);
+            lines.push('<' + username + config.telegramUserSuffix +
+                '> ' + line);
         });
     } else if (message.meta.permalink) {
         lines.push(username + config.telegramUserSuffix +
@@ -622,9 +640,4 @@ function isInChannel(channel, channels) {
 
 function wrapCodeBlock(text) {
     return '```\n' + text + '\n```';
-}
-
-function escapeMd(text) {
-    return config.allowMarkdown && !forbidMarkdown ?
-        api.escapeMarkdown(text) : text;
 }
