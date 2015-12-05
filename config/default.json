@@ -75,7 +75,8 @@
             "pluginctl",
             "firewall",
             "fileinfocache",
-            "stickercodec"
+            "stickercodec",
+            "throttle"
         ],
 
         // Service-specific configuration options
@@ -94,6 +95,18 @@
                     "privateMessage": "user",
                     "groupMessage": "user"
                 }
+            },
+            "throttle": {
+                // Min. authority level exempt from throttling (null for no exceptions)
+                // Default setting of "user" effectively disables throttling
+                // Recommended setting to enable throttling is "owner"
+                "grantImmunity": "user",
+                // Always immediately allow x messages through after a quiet period
+                "burst": 3,
+                // Max. sustained rate: x messages per y seconds (messages will delay to conform)
+                "rate": [4, 7],
+                // When x messages are currently delayed, immediately drop new incoming messages
+                "queueLimit": 3
             },
             "mediaproxy": {
                 "privileges": {
