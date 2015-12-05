@@ -106,7 +106,9 @@
                 // Max. sustained rate: x messages per y seconds (messages will delay to conform)
                 "rate": [4, 7],
                 // When x messages are currently delayed, immediately drop new incoming messages
-                "queueLimit": 3
+                "queueLimit": 3,
+                // If not empty, a warning that will be sent when messages are dropped
+                "warningText": "Some of your messages are being ignored because you are sending too fast. This message will only be sent once."
             },
             "mediaproxy": {
                 "privileges": {

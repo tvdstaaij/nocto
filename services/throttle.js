@@ -4,12 +4,13 @@ var Promise = require('bluebird');
 var TokenBucket = require('tokenbucket');
 var botUtil = require('../lib/utilities.js');
 
-var log;
+var api, log;
 var svcConfig = _.get(config, 'services.config.throttle') || {};
 var users = {};
 
 module.exports.init = function(resources, service) {
     log = resources.log;
+    api = resources.bot.api;
     return botUtil.loadServiceDependencies(['userdata'], service);
 };
 
@@ -30,11 +31,16 @@ module.exports.filterMessage = function(message, meta) {
                 tokensToAddPerInterval: svcConfig.rate[0],
                 size: svcConfig.burst,
                 spread: true
-            })
+            }),
+            warned: false
         };
 
     // Too many messages are already being delayed: instant reject
     if (user.queueSize >= svcConfig.queueLimit) {
+        if (svcConfig.warningText && !user.warned) {
+            user.warned = true;
+            new api.MessageBuilder(sender).text(svcConfig.warningText).send();
+        }
         return false;
     }
 
