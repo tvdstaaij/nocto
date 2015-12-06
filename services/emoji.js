@@ -102,6 +102,12 @@ methods.applySkinVariants = function(text) {
     });
 };
 
+methods.fromBoolean = function(bool) {
+    return emojiData.from_short_name(
+        bool ? 'heavy_check_mark' : 'x'
+    ).render();
+};
+
 module.exports.provides = function() {
     return _.extend(properties, methods);
 };
