@@ -8,7 +8,7 @@ var FREERICE_BASE = 'http://freerice.com';
 
 function FreericeApi(options) {
     this._request = request.defaults({
-        forever: true,
+        pool: {keepAlive: true, maxSockets: 1},
         baseUrl: FREERICE_BASE,
         gzip: true,
         headers: {
@@ -70,7 +70,6 @@ FreericeApi.prototype.getNumberForAnswer = function(answer) {
     var match = _.findIndex(this.question.answers, function(candidate) {
         candidate = String(candidate).toLowerCase().replace(/\s/g, '');
         if (candidate === answer) return true;
-        // Todo: handle long answers
     });
     return match >= 0 ? match : null;
 };
