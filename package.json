@@ -28,6 +28,7 @@
     "imagemin": "^4.0.0",
     "mime-types": "^2.1.7",
     "observed": "^1.1.1",
+    "sqlite3": "^3.1.1",
     "store": "alexkwolfe/node-store#d6819f7ea9e612d00aec08d485266c65a504be92",
     "tokenbucket": "^0.3.2"
   },

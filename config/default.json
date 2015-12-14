@@ -110,6 +110,9 @@
                 // If not empty, a warning that will be sent when messages are dropped
                 "warningText": "Some of your messages are being ignored because you are sending too fast. This message will only be sent once."
             },
+            "sqlite": {
+                "debug": false
+            },
             "mediaproxy": {
                 "privileges": {
                     // Who is allowed to request file permalinks
