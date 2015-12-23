@@ -3,6 +3,8 @@ var path = require('path');
 var Promise = require('bluebird');
 var fs = Promise.promisifyAll(require('fs'));
 var FreericeApi = require('./lib/frapi');
+var resultMessages = require('./lib/result-messages');
+var subjects = require('./lib/subjects');
 
 var config, api, emoji, db, log;
 var handlers = {};
@@ -27,31 +29,38 @@ handlers.enable = function(cb) {
 
 handlers.handleMessage = function(message, meta) {
     var command = meta.command;
-    if (!meta.fresh) return;
+    if (!meta.fresh || !message.text) return;
 
     var reply = new api.MessageBuilder(message.chat.id).markdown();
     var sink = _.partial(outputResult, reply);
     var game = games[message.chat.id];
     var freerice = game ? game.freerice : null;
+    var operation = null;
+    var newSubject = null;
 
     if (command && (command.name === 'fr' || command.name === 'freerice')) {
-        var operation = null;
         if (command.argumentTokens.length) {
-            if (_.endsWith(command.argumentTokens[0], 'subject')) {
-                operation = 'subject';
+            if (_.endsWith(command.argumentTokens[0], 'subject') ||
+                _.endsWith(command.argumentTokens[0], 'subjects')) {
+                operation = 'listsubjects';
             } else if (_.endsWith(command.argumentTokens[0], 'level')) {
-                operation = 'level';
+                operation = 'setlevel';
             } else if (command.argumentTokens[0] === 'reset') {
                 game = null;
-            } else {
-                return;
+                operation = 'reset';
             }
+        } else {
+            operation = 'fetch';
         }
+    } else if (_.isString(newSubject = subjects[message.text])) {
+        operation = 'setsubject';
+    }
 
-        if (game && game.locked && operation !== 'reset') return;
+    if (operation !== null) {
+        if (game && game.locked) return;
         if (!game) {
             game = games[message.chat.id] = {
-                subject: config.defaultSubject,
+                subject: null,
                 freerice: new FreericeApi(config),
                 question: null,
                 locked: false,
@@ -60,16 +69,27 @@ handlers.handleMessage = function(message, meta) {
             freerice = game.freerice;
         }
         var chain = Promise.bind(freerice);
-        if (operation !== 'subject') {
+        if (game.subject === null && operation !== 'setsubject') {
             chain = chain.then(_.partial(freerice.changeSubject,
                 config.defaultSubject));
+            game.subject = config.defaultSubject;
         }
         switch (operation) {
-            case 'subject':
-                var subject = command.argumentTokens[1].toLowerCase();
-                chain = chain.then(_.partial(freerice.changeSubject, subject));
+            case 'listsubjects':
+                var subjectStrings = _.keys(subjects);
+                var text = '*Available subjects:* ' + subjectStrings.join(', ');
+                var keyboard = new api.KeyboardBuilder(subjectStrings)
+                    .resize(true).selective(true);
+                return reply.reply(message.message_id).text(text)
+                    .keyboard(keyboard.build()).send();
+            case 'setsubject':
+                chain = chain
+                    .then(_.partial(freerice.changeSubject, newSubject))
+                    .then(function() {
+                        game.subject = newSubject;
+                    });
                 break;
-            case 'level':
+            case 'setlevel':
                 var level = Number(command.argumentTokens[1]);
                 chain = chain.then(_.partial(freerice.changeLevel, level));
                 break;
@@ -77,7 +97,8 @@ handlers.handleMessage = function(message, meta) {
         game.locked = true;
         chain.then(freerice.fetch)
             .then(function(question) {
-                return (game.question = question);
+                game.question = question;
+                return game;
             })
             .then(sink)
             .finally(function() {
@@ -86,18 +107,18 @@ handlers.handleMessage = function(message, meta) {
         return;
     }
 
-    if (!freerice || !message.text) return;
+    if (!freerice) return;
     var selectedAnswer = freerice.getNumberForAnswer(message.text.trim());
     if (_.isNumber(selectedAnswer)) {
         game.locked = true;
         freerice.fetch(selectedAnswer)
             .then(function(question) {
                 var result = question.result;
-                var previous = game.question;
+                game.previous = game.question;
                 game.question = question;
-                sink(question);
+                sink(game, message.from);
 
-                var level = previous.currentLevel;
+                var level = game.previous.currentLevel;
                 if (!level && !game.rounds) {
                     level = 1;
                 }
@@ -116,16 +137,29 @@ handlers.handleMessage = function(message, meta) {
     }
 };
 
-function outputResult(reply, question) {
+function outputResult(reply, game, user) {
     var text = '';
-    if (question.result) {
-        text += emoji.fromBoolean(question.result.correct);
-        text += ' _' + question.result.raw + '_\n\n';
+    var question = game.question;
+    var result = question.result;
+    if (result && user) {
+        text += emoji.fromBoolean(result.correct);
+        var messagePool = result.correct ?
+            resultMessages.good : resultMessages.bad;
+        var suffix = result.correct ? '!' : '.';
+        text += ' _' + _.sample(messagePool) + ' ' + user.first_name + suffix;
+        text += '_ ' + api.escapeMarkdown(_.capitalize(result.prompt)) + ' = ';
+        text += result.answer + '.';
+        var prevLevel = _.get(game, 'previous.currentLevel');
+        var curLevel = question.currentLevel;
+        if (prevLevel && curLevel && prevLevel !== curLevel) {
+            text += ' We are now playing on *level ' + curLevel + '*.';
+        }
+        text += '\n\n';
     }
     var prompt = _.capitalize(question.prompt);
     var title = _.capitalize(question.title);
     var formattedQuestion = api.escapeMarkdown(title)
-        .replace(prompt, '*' + prompt + '*');
+        .replace(prompt, '*' + api.escapeMarkdown(prompt) + '*');
     text += formattedQuestion + '\n\n';
     text += api.escapeMarkdown(question.answers.join(' / '));
     var keyboard = new api.KeyboardBuilder(question.answers).resize(true);
