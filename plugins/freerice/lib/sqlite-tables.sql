@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS fr_rounds (
+    id INTEGER PRIMARY KEY NOT NULL,
+    time TEXT NOT NULL DEFAULT (DATETIME('now')),
+    tg_user INTEGER NOT NULL,
+    correct BOOLEAN NOT NULL,
+    gains INTEGER NOT NULL,
+    subject TEXT NOT NULL,
+    level INTEGER NULL
+);
