@@ -5,6 +5,9 @@ module.exports = function loadPlugin(resources) {
     return {
         handleMessage: function(message, meta) {
             log.info('handleMessage: meta =', meta, ', message =', message);
+        },
+        handleInlineQuery: function(query, meta) {
+            log.info('handleInlineQuery: meta =', meta, ', query =', query);
         }
     };
 };
