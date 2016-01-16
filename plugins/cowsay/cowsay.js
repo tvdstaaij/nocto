@@ -14,7 +14,7 @@ module.exports = function loadPlugin(resources) {
 
 handlers.enable = function(cb) {
     cowsay.list(function(err, result) {
-        cows = result;
+        cows = _.difference(result, config.blacklist || []);
         if (!err) {
             _.forEach(cows, function (cow) {
                 cowsay.say({f: cow, text: 'a'});
@@ -53,7 +53,7 @@ handlers.handleInlineQuery = function(message) {
 
         if (!output.trim()) return null;
         if (output.indexOf('```') !== -1) return null;
-        output = '```\n' + output + '\n```';
+        output = '```\n\u200B' + output + '\n```';
         if (output.length > config.maxOutputLength) return null;
 
         var cowLabel = cow === 'default' ? 'cow' : cow;
@@ -71,6 +71,6 @@ handlers.handleInlineQuery = function(message) {
 
     api.answerInlineQuery({
         inline_query_id: message.id,
-        results: _.compact(results)
+        results: _.compact(results).slice(0, 50)
     });
 };
