@@ -424,6 +424,9 @@ function relayTelegramEvent(event, options) {
 
 function formatIrcEvent(event, ownUser, options) {
     options = options || {};
+    if (options.ircToIrc) {
+        options.forcePlain = true;
+    }
     if (config.ircEvents.indexOf(event.type) === -1) {
         return;
     }
@@ -434,7 +437,8 @@ function formatIrcEvent(event, ownUser, options) {
         event.reason = '';
     }
     var useMarkdown = (config.allowMarkdown && !options.forcePlain &&
-        _.contains(['message', 'notice', 'action'], event.type));
+        _.contains(['message', 'notice', 'action'], event.type) &&
+        !options.ircToIrc);
     if (!options.ircToIrc && event.text && config.ircEncodeEmoji) {
         event.text = emoji.namesToUnicode(event.text);
     }
@@ -499,6 +503,9 @@ function formatIrcEvent(event, ownUser, options) {
         }
     })();
     if (output) {
+        if (options.ircToIrc) {
+            return output;
+        }
         return {
             text: output,
             markdown: useMarkdown
