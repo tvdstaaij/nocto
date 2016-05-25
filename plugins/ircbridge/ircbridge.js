@@ -345,9 +345,9 @@ function relayIrcEvent(event, context) {
         }
         // Easter egg, see config.json
         if (config.rheet && event.text && /rhe{2,}t/i.test(event.text)) {
-            api.sendAudio({
+            api.sendVoice({
                 chat_id: route.to,
-                audio: {
+                voice: {
                     value: fs.createReadStream(
                         path.join(__dirname, config.rheet)
                     ),
