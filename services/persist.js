@@ -1,3 +1,4 @@
+require('object.observe');
 var path = require('path');
 var Promise = require('bluebird');
 var O = require('observed');
@@ -14,6 +15,7 @@ module.exports.init = function(resources) {
 module.exports.provides = function(context) {
     var methods = {};
     var storageId = context.name + '.' + context.type;
+    var savePromise = Promise.resolve();
 
     methods.load = function(cb) {
         return storage.loadAsync(storageId).then(function(container) {
@@ -22,10 +24,13 @@ module.exports.provides = function(context) {
                 return createStorage();
             }).then(function(container) {
                 O(container.data).on('change', function() {
-                    storage.addAsync(container).catch(function(error) {
-                        log.error('Failed saving persistent storage ' +
-                                  container.id + ':', error);
-                    });
+                    savePromise = savePromise.then(function() {
+                        return storage.addAsync(container);
+                    })
+                        .catch(function(error) {
+                            log.error('Failed saving persistent storage ' +
+                                container.id + ':', error);
+                        });
                 });
                 return container.data;
             }
