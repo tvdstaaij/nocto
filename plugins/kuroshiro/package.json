@@ -1,0 +1,13 @@
+{
+  "name": "kuroshiro",
+  "version": "0.1.0",
+  "main": "kuroshiro.js",
+  "author": {
+    "name": "Robin Jacobs",
+    "email": "robin@robinj.be",
+    "url": "http://robinj.be"
+  },
+  "dependencies": {
+    "kuroshiro": "^0.1.2"
+  }
+}
