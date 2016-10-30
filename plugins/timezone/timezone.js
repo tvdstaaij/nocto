@@ -2,7 +2,7 @@ var Promise = require ('bluebird');
 var Moment = require ('moment');
 var Timezone = require ('moment-timezone');
 
-var log, api, config, timezones;
+var log, api, config;
 var handlers = {};
 var zones = {};
 
