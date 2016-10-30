@@ -49,7 +49,7 @@ handlers.handleMessage = (message, meta) =>
 			return msg (message.chat.id, 'Unknown timezone');
 		
 		var timezone = zones[command.argument.toLowerCase ()];
-		var time = Moment.tz (new Date (), timezone).format ('h:ma');
+		var time = Moment.tz (new Date (), timezone).format (config.format);
 		
 		return msg (message.chat.id, timezone + ': ' + time);
 	}
