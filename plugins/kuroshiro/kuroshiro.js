@@ -3,7 +3,6 @@ var Kuroshiro = require ('kuroshiro');
 
 var log, api, config;
 var handlers = {};
-var zones = {};
 
 module.exports = (resources) =>
 {
