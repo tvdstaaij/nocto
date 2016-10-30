@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "moment": "^2.15.2",
-    "moment-timezone": "^0.5.7",
-    "bluebird": "^3.4.6"
+    "moment-timezone": "^0.5.7"
   }
 }
