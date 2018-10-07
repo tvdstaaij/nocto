@@ -8,6 +8,19 @@ var api, config, log, persist, storage, emoji;
 var handlers = {}, clients = {}, groupScopeMap = {}, channelScopeMap = {};
 var inboundRoutes = [], outboundRoutes = [], copyRoutes = [], readyServers = [];
 
+const YES = ['1', 'true', 'on'];
+const NO = ['0', 'false', 'off'];
+
+const PREFERENCES_KEY_RELAYABLE = 'relayable';
+const PREFERENCES_KEY_COLOUR = 'colour';
+const PREFERENCES_KEY_ALIAS = 'alias';
+
+const TELEGRAM_USER_PREFERENCES_DEFAULT = {
+    [PREFERENCES_KEY_RELAYABLE]: true,
+    [PREFERENCES_KEY_COLOUR]: null,
+    [PREFERENCES_KEY_ALIAS]: null
+};
+
 module.exports = function loadPlugin(resources, service) {
     log = resources.log;
     api = resources.api;
@@ -20,8 +33,20 @@ module.exports = function loadPlugin(resources, service) {
 handlers.enable = function(cb) {
     persist.load().then(function(result) {
         storage = result;
-        storage.telegramAliases = storage.telegramAliases || {};
-        storage.telegramColors = storage.telegramColors || {};
+        storage.telegramUserPreferences = storage.telegramUserPreferences || {};
+
+        // Load legacy config
+        if (storage.telegramColors) {
+            object.keys(storage.telegramColors).forEach(
+                user => setUserPreference(user, PREFERENCES_KEY_COLOUR, storage.telegramColors[user]));
+            storage.telegramColors = {};
+        }
+        if (storage.telegramAliases) {
+            object.keys(storage.telegramAliases).forEach(
+                user => setUserPreference(user, PREFERENCES_KEY_ALIAS, storage.telegramAliases[user]));
+            storage.telegramAliases = {};
+        }
+        
         return Promise.try(function() {
             Object.keys(config.servers).forEach(function(serverName) {
                 var serverConfig = config.servers[serverName];
@@ -122,6 +147,9 @@ handlers.handleMessage = function(message, meta) {
         case 'setalias':
             setAlias(chatId, message.from.id, command.argumentTokens[0]);
             return;
+        case 'setrelay':
+            setUserRelayable(chatId, message.from.id, command.argumentTokens[0]);
+            return;
         case 'setcolor':
             setColor(chatId, message.from.id, command.argumentTokens[0]);
             return;
@@ -137,6 +165,11 @@ handlers.handleMessage = function(message, meta) {
             message.text = command.argument;
             break;
         }
+    }
+
+    // Don't relay messages from users that have opted out
+    if (!getUserPreference(message.from.id, PREFERENCES_KEY_RELAYABLE)) {
+        return;
     }
 
     message.meta = meta;
@@ -519,9 +552,8 @@ function formatTelegramEvent(message, options) {
     var location = message.location;
     var contact = message.contact;
     var text = message.text;
-    var username = storage.telegramAliases[message.from.id] ||
-        message.from.username ||
-        message.from.first_name;
+    var username = getUserPreference(message.from.id, PREFERENCES_KEY_ALIAS,
+        message.from.username || message.from.first_name);
     if (location) {
         lines.push(username +
                    ' sent location: http://maps.google.com/maps?t=m&q=loc:' +
@@ -542,7 +574,7 @@ function formatTelegramEvent(message, options) {
                 username = irc.colors.wrap('bold', username);
             }
             if (config.ircColoredNames) {
-                var color = storage.telegramColors[message.from.id];
+                const color = getUserPreference(message.from.id, PREFERENCES_KEY_COLOUR);
                 if (color) {
                     username = irc.colors.wrap(color, username);
                 }
@@ -589,10 +621,42 @@ function setAlias(telegramGroup, telegramUser, alias) {
         });
         return;
     }
-    storage.telegramAliases[telegramUser] = alias;
+    setUserPreference(telegramUser, PREFERENCES_KEY_ALIAS, alias);
     api.sendMessage({
         chat_id: telegramGroup,
         text: 'Alias set to "' + alias + '".'
+    });
+}
+
+function setUserRelayable(telegramGroup, telegramUser, relayable) {
+    const channels = findChannelsForGroup(telegramGroup);
+    
+    if (!relayable) {
+        const messagesBeingRelayed = getUserPreference(telegramUser, PREFERENCES_KEY_RELAYABLE);
+        const message = messagesBeingRelayed ?
+            `Your messages are currently being relayed to ${channels.join(', ')}.` :
+            'Your messages are currently NOT being relayed.';
+        return api.sendMessage({
+            chat_id: telegramGroup,
+            text: message
+        });
+    } else if (YES.includes(relayable.toLowerCase())) {
+        setUserPreference(telegramUser, PREFERENCES_KEY_RELAYABLE, true);
+        return api.sendMessage({
+            chat_id: telegramGroup,
+            text: `Your messages will be relayed to ${channels.join(', ')}.`
+        });
+    } else if (NO.includes(relayable.toLowerCase())) {
+        setUserPreference(telegramUser, PREFERENCES_KEY_RELAYABLE, false);
+        return api.sendMessage({
+            chat_id: telegramGroup,
+            text: 'Your messages will NOT be relayed.'
+        });
+    }
+    
+    return api.sendMessage({
+        chat_id: telegramGroup,
+        text: 'Invalid value. Yes or no?'
     });
 }
 
@@ -608,7 +672,7 @@ function setColor(telegramGroup, telegramUser, color) {
         });
         return;
     }
-    storage.telegramColors[telegramUser] = color;
+    setUserPreference(telegramUser, PREFERENCES_KEY_COLOUR, color);
     api.sendMessage({
         chat_id: telegramGroup,
         text: 'Nickname color set to "' + color + '".'
@@ -647,4 +711,13 @@ function isInChannel(channel, channels) {
 
 function wrapCodeBlock(text) {
     return '```\n' + text + '\n```';
+}
+
+function getUserPreference(user, key, fallback = null) {
+    return _.get(storage.telegramUserPreferences, [user, key],
+        fallback || TELEGRAM_USER_PREFERENCES_DEFAULT[key]);
+}
+
+function setUserPreference(user, key, value) {
+    return _.set(storage.telegramUserPreferences, [user, key], value);
 }
