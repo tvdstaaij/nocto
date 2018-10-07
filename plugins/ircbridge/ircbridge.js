@@ -36,16 +36,12 @@ handlers.enable = function(cb) {
         storage.telegramUserPreferences = storage.telegramUserPreferences || {};
 
         // Load legacy config
-        if (storage.telegramColors) {
-            object.keys(storage.telegramColors).forEach(
-                user => setUserPreference(user, PREFERENCES_KEY_COLOUR, storage.telegramColors[user]));
-            storage.telegramColors = {};
-        }
-        if (storage.telegramAliases) {
-            object.keys(storage.telegramAliases).forEach(
-                user => setUserPreference(user, PREFERENCES_KEY_ALIAS, storage.telegramAliases[user]));
-            storage.telegramAliases = {};
-        }
+        object.keys(storage.telegramColors || {}).forEach(
+            user => setUserPreference(user, PREFERENCES_KEY_COLOUR, storage.telegramColors[user]));
+        storage.telegramColors = {};
+        object.keys(storage.telegramAliases || {}).forEach(
+            user => setUserPreference(user, PREFERENCES_KEY_ALIAS, storage.telegramAliases[user]));
+        storage.telegramAliases = {};
         
         return Promise.try(function() {
             Object.keys(config.servers).forEach(function(serverName) {
