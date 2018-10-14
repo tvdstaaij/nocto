@@ -15,7 +15,7 @@
     "bluebird": "^2.9.34",
     "config": "^1.14.0",
     "inquirer": "~0.9.0",
-    "lodash": "^3.10.0",
+    "lodash": "^4.17.10",
     "log4js": "~0.6.27",
     "request": "^2.65.0"
   },
@@ -29,7 +29,7 @@
     "mime-types": "^2.1.7",
     "object.observe": "^0.2.6",
     "observed": "^1.1.1",
-    "sqlite3": "^3.1.1",
+    "sqlite3": "^4.0.2",
     "store": "alexkwolfe/node-store#d6819f7ea9e612d00aec08d485266c65a504be92",
     "tokenbucket": "^0.3.2"
   },

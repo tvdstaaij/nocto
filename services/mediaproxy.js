@@ -280,9 +280,9 @@ function makeFileSuffix(media) {
         var extensions = mime.extensions[file.mime_type] || [];
         var preferredMatches = _.intersection(extensions, preferredExtensions);
         if (!_.isEmpty(preferredMatches)) {
-            suffix = '.' + _.first(preferredMatches);
+            suffix = '.' + _.head(preferredMatches);
         } else if (!_.isEmpty(extensions)) {
-            suffix = '.' + _.first(extensions);
+            suffix = '.' + _.head(extensions);
         } else {
             suffix = file.mime_type.replace(/^[^\/]*\//, '.');
         }

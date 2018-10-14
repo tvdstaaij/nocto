@@ -88,7 +88,7 @@ handlers.handleMessage = function(message, meta) {
             } else if (command.argumentTokens.length === 0) {
                 var matches = findChannelsForGroup(chatId);
                 if (matches.length === 1) {
-                    channel = _.first(matches);
+                    channel = _.head(matches);
                 }
             }
             if (channel) {
@@ -107,7 +107,7 @@ handlers.handleMessage = function(message, meta) {
             } else if (command.argumentTokens.length === 1) {
                 var matches = findChannelsForGroup(chatId);
                 if (matches.length === 1) {
-                    channel = _.first(matches);
+                    channel = _.head(matches);
                 }
             }
             if (channel) {
@@ -437,7 +437,7 @@ function formatIrcEvent(event, ownUser, options) {
         event.reason = '';
     }
     var useMarkdown = (config.allowMarkdown && !options.forcePlain &&
-        _.contains(['message', 'notice', 'action'], event.type) &&
+        _.includes(['message', 'notice', 'action'], event.type) &&
         !options.ircToIrc);
     if (!options.ircToIrc && event.text && config.ircEncodeEmoji) {
         event.text = emoji.namesToUnicode(event.text);
@@ -636,7 +636,7 @@ function findClientForChannel(channel, telegramGroup) {
 }
 
 function findChannelsForGroup(telegramGroup) {
-    return _.pluck(_.filter(inboundRoutes, 'to', telegramGroup), 'from');
+    return _.map(_.filter(inboundRoutes, 'to', telegramGroup), 'from');
 }
 
 function isInChannel(channel, channels) {

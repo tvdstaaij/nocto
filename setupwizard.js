@@ -180,7 +180,7 @@ function runWizard() {
             }
         );
         process.stdout.write(' done.' + os.EOL);
-        if (!_.contains(process.argv, SPAWN_ARG)) {
+        if (!_.includes(process.argv, SPAWN_ARG)) {
             process.exit(0);
         } else {
             process.stdout.write(os.EOL);
@@ -200,7 +200,7 @@ function runWizard() {
     });
 }
 
-if (_.contains(process.argv, RUN_ARG)) {
+if (_.includes(process.argv, RUN_ARG)) {
     runWizard();
 } else {
     module.exports = {

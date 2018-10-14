@@ -40,7 +40,7 @@ module.exports.provides = function(context) {
         },
         owner: function() {
             var ownerData = null;
-            _.some(_.pairs(users), function(recordPair) {
+            _.some(_.toPairs(users), function(recordPair) {
                 if (recordPair[1].authorityLevel ===
                         authorityLevelsBySymbol['~']) {
                     ownerData = getUserData(recordPair);

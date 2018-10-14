@@ -27,7 +27,7 @@ module.exports.init = function(resources, service) {
         storage.plugins = storage.plugins || {};
         pluginData = storage.plugins;
         _.forEach(pluginData, function(pluginRecord, pluginName) {
-            if (!_.contains(pluginList, pluginName)) {
+            if (!_.includes(pluginList, pluginName)) {
                 pluginRecord.enabled = false;
             }
             if (pluginRecord.enabled === true) {
@@ -77,7 +77,7 @@ function performOperation(operation, pluginNames, reply) {
         (pluginNames.length === 0 && operation.indexOf('re') === 0)) {
         cleanPluginNames = pluginList.slice(0);
     } else {
-        cleanPluginNames = _(pluginNames).invoke(String.prototype.trim)
+        cleanPluginNames = _(pluginNames).invokeMap(String.prototype.trim)
             .compact().filter(function(pluginName) {
                 if (!_.has(pluginData, pluginName)) {
                     reports.push('Plugin "' + pluginName + '" not found');
@@ -191,7 +191,7 @@ function showStatus(reply) {
 }
 
 function hasEnablePermission(pluginName) {
-    if (_.contains(pluginConfig.autoEnabled, pluginName)) {
+    if (_.includes(pluginConfig.autoEnabled, pluginName)) {
         return true;
     }
     var record = pluginData[pluginName];
