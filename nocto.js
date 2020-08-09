@@ -134,7 +134,7 @@ var serviceResources = {
 };
 
 _.forEach(['message', 'inlineQuery'], function(updateType) {
-    var dispatcher = _.partial(dispatchUpdate, _.capitalize(updateType));
+    var dispatcher = _.partial(dispatchUpdate, _.upperFirst(updateType));
     bot.on(updateType + 'Received', dispatcher);
 });
 

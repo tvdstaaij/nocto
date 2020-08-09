@@ -147,7 +147,7 @@ function outputResult(reply, game, user) {
             resultMessages.good : resultMessages.bad;
         var suffix = result.correct ? '!' : '.';
         text += ' _' + _.sample(messagePool) + ' ' + user.first_name + suffix;
-        text += '_ ' + api.escapeMarkdown(_.capitalize(result.prompt)) + ' = ';
+        text += '_ ' + api.escapeMarkdown(_.upperFirst(result.prompt)) + ' = ';
         text += result.answer + '.';
         var prevLevel = _.get(game, 'previous.currentLevel');
         var curLevel = question.currentLevel;
@@ -156,8 +156,8 @@ function outputResult(reply, game, user) {
         }
         text += '\n\n';
     }
-    var prompt = _.capitalize(question.prompt);
-    var title = _.capitalize(question.title);
+    var prompt = _.upperFirst(question.prompt);
+    var title = _.upperFirst(question.title);
     var formattedQuestion = api.escapeMarkdown(title)
         .replace(prompt, '*' + api.escapeMarkdown(prompt) + '*');
     text += formattedQuestion + '\n\n';

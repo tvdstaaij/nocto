@@ -213,7 +213,7 @@ function makeOperationReport(operation, promises) {
             }
             reports.push(
                 getEmojiForBoolean(success) + ' ' +
-                _.capitalize(operation) + ' ' + pluginName +
+                _.upperFirst(operation) + ' ' + pluginName +
                 (success ? '' : ' (error details logged)')
             );
         });

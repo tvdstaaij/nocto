@@ -77,6 +77,6 @@ function uploadResult(chatId, mediaType, fileType, buffer) {
             filename: 'sticker.' + fileType
         }
     };
-    return api['send' + _.capitalize(mediaType)]
+    return api['send' + _.upperFirst(mediaType)]
         .call(api, response, {fileUpload: true});
 }
