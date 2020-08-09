@@ -1,5 +1,12 @@
 {
+  // Filter results that would result in a message that is too long
   "maxOutputLength": 512,
+  // Base URI and extension for thumbnails, interpolated as
+  // <thumbLocation>/<cow><thumbExt>
   "thumbLocation": "",
-  "thumbExt": ""
+  "thumbExt": "",
+  // Use only these cows
+  "whitelist": [],
+  // Use all cows except these
+  "blacklist": []
 }

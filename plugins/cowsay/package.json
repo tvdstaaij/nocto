@@ -1,8 +1,8 @@
 {
-  "name": "cowsay-query",
-  "version": "0.1.0",
+  "name": "cowsay",
+  "version": "0.2.0",
   "main": "cowsay.js",
   "dependencies": {
-    "cowsay": "^1.1.3"
+    "cowsay": "~1.3.1"
   }
 }

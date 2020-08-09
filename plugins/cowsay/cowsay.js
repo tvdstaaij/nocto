@@ -14,7 +14,12 @@ module.exports = function loadPlugin(resources) {
 
 handlers.enable = function(cb) {
     cowsay.list(function(err, result) {
-        cows = _.difference(result, config.blacklist || []);
+        if (!_.isEmpty(config.whitelist)) {
+            cows = _.intersection(result, config.whitelist || []);
+        } else {
+            cows = _.difference(result, config.blacklist || []);
+        }
+        log.debug(cows);
         if (!err) {
             _.forEach(cows, function (cow) {
                 cowsay.say({f: cow, text: 'a'});
@@ -34,6 +39,7 @@ handlers.enable = function(cb) {
                 if (a > b) return 1;
                 return 0;
             });
+            log.info('Loaded ' + cows.length + ' cows');
         }
         cb(err);
     });
@@ -42,35 +48,46 @@ handlers.enable = function(cb) {
 handlers.handleInlineQuery = function(message) {
     var text = message.query;
 
-    var results = _.map(cows, function(cow) {
-        if (!text) return null;
+    var results = _.chain(cows)
+        .map(function(cow) {
+            if (!text) return null;
 
-        var uniqueId = cow + text;
-        var hash = crypto.createHash('md5')
-            .update(uniqueId).digest('hex');
+            var uniqueId = cow + text;
+            var hash = crypto.createHash('md5')
+                .update(uniqueId).digest('hex');
 
-        var output = cowsay.say({f: cow, text: text});
+            var output = cowsay.say({f: cow, text: text});
 
-        if (!output.trim()) return null;
-        if (output.indexOf('```') !== -1) return null;
-        output = '```\n\u200B' + output + '\n```';
-        if (output.length > config.maxOutputLength) return null;
+            if (!output.trim()) return null;
+            if (output.indexOf('```') !== -1) return null;
+            output = '```\n\u200B' + output + '\n```';
+            if (output.length > config.maxOutputLength) return null;
 
-        var cowLabel = cow === 'default' ? 'cow' : cow;
-        cowLabel = _.capitalize(cowLabel.replace(/-/g, ' '));
-        return {
-            type: 'article',
-            id: hash,
-            title: cowLabel,
-            parse_mode: 'Markdown',
-            message_text: output,
-            thumb_url: config.thumbLocation ?
-                config.thumbLocation + '/' + cow + config.thumbExt : undefined
-        };
-    });
+            var cowLabel = cow === 'default' ? 'cow' : cow;
+            cowLabel = _.upperFirst(cowLabel.replace(/-/g, ' '));
+            return {
+                type: 'article',
+                id: hash,
+                title: cowLabel,
+                parse_mode: 'Markdown',
+                message_text: output,
+                thumb_url: config.thumbLocation ?
+                    config.thumbLocation + '/' + cow + config.thumbExt :
+                    undefined
+            };
+      })
+      .compact()
+      .slice(0, 50)
+      .value();
 
+    if (results.length) {
+      log.trace('Generated cows: ' + JSON.stringify({
+        text: text,
+        user: message.from
+      }));
+    }
     api.answerInlineQuery({
         inline_query_id: message.id,
-        results: _.compact(results).slice(0, 50)
+        results: results
     });
 };
