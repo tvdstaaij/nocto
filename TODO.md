@@ -1,6 +1,7 @@
 ## Core / miscellaneous
 
 * Bring dependencies up to date
+* Fix numerous components to work with recent node versions (e.g. firewall)
 * Retry queue for API calls
 * Get rid of synchronous file reads during plugin load
 * Better documentation
