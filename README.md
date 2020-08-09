@@ -10,7 +10,10 @@ What can nocto do for you?
   custom plugins without having to reinvent the wheel all the time. Nocto
   provides much more functionality than a simple API wrapper does.
 
-The core functionality is still under development; consider it a beta version.
+## Development status
+
+Mostly functional but not actively maintained. Lots of outdated dependencies.
+May or may not be modernized in the future.
 
 ## Quickstart
 
@@ -18,8 +21,7 @@ The core functionality is still under development; consider it a beta version.
 2. Run `./fullinstall.sh` to install core and plugin dependencies with npm.
 3. Make sure the user running the bot has read/write permission for the
    directories `logs`, `persist` and `config`.
-4. Launch with `node nocto.js` or `npm start`. Note: in some environments
-   the `node` executable is called `nodejs` instead.
+4. Launch with `node nocto.js` or `npm start`.
 5. Answer the questions asked by the first time setup wizard. If you don't have
    an API token yet, request one from @BotFather on Telegram.
 6. Get on Telegram and claim ownership of the bot by sending the command
@@ -31,7 +33,7 @@ After the first run, which is interactive, you can just use your preferred way
 to (automatically) launch and keep the application running in the background.
 Sending an interrupt signal (Control-C) initiates a clean shutdown.
 
-## Available plugins
+## Available plugins (incomplete)
 
 * `echo`: Simple example plugin implementing an echo command.
 * `feedannounce`: RSS/Atom notifications configurable for either public or
