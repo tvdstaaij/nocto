@@ -8,6 +8,9 @@ var RUN_ARG = '--runwizard';
 var SPAWN_ARG = '--spawned';
 
 function isConfigCustomized() {
+    if (process.env.NODE_CONFIG || process.env.NODE_CONFIG_DIR) {
+      return true;
+    }
     var configDir = path.join(__dirname, 'config');
     return _.some(fs.readdirSync(configDir), function(filename) {
         filename = filename.toLowerCase();
