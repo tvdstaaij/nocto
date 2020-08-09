@@ -3,6 +3,6 @@
     "version": "0.1.0",
     "main": "jukebox.js",
     "dependencies": {
-    	"pleer": "~0.0.5"
+        "pleer": "~0.0.5"
     }
 }
