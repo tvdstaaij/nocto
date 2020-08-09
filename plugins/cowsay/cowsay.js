@@ -19,7 +19,6 @@ handlers.enable = function(cb) {
         } else {
             cows = _.difference(result, config.blacklist || []);
         }
-        log.debug(cows);
         if (!err) {
             _.forEach(cows, function (cow) {
                 cowsay.say({f: cow, text: 'a'});
