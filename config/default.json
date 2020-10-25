@@ -25,7 +25,7 @@
         // True to cancel bot init if the initial getMe API call fails
         "mandatoryHandshake": true
     },
-    
+
     "behavior": {
         // Array of prefix strings to recognize as a command message
         "commandPrefix": [ "/" ]
@@ -50,17 +50,17 @@
         // Ordered from high to low processing priority
         "register": [
         ],
-        
+
         // List of plugins to always enable after bot start or reload command
         // Can be used as an alternative or supplement to the pluginctl service
         "autoEnabled": [
         ],
-        
+
         // Optional plugin-specific configuration overrides
         "config": {
             "echo": {
                 "reverse": false
-            }        
+            }
         }
     },
 
@@ -132,23 +132,22 @@
 
     // See https://github.com/nomiddlename/log4js-node#configuration
     "log": {
-        "appenders": [
-            {
+        "appenders": {
+            "console": {
                 "type": "console"
             },
-            {
+            "file": {
                 "type": "dateFile",
                 "filename": "logs/nocto",
                 "pattern": "-yyyy-MM-dd.log",
                 "alwaysIncludePattern": true
             }
-        ],
-      
-        "levels": {
-            "nocto": "DEBUG",
-            "tgbot": "DEBUG",
-            "plugins": "DEBUG",
-            "firewall": "DEBUG"
+        },
+        "categories": {
+            "default": {
+                "appenders": ["console", "file"],
+                "level": "DEBUG"
+            }
         }
     },
 
