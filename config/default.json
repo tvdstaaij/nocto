@@ -118,7 +118,8 @@
                     // Who is allowed to request file permalinks
                     "permalink": "user"
                 },
-                "decodeWebp": true
+                "autoPermalink": false,
+                "encryptFileId": false
             },
             "fileinfocache": {
                 // File download link expiry time (specified by bot API docs)

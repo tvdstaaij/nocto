@@ -4,12 +4,14 @@ var httpProxy = require('http-proxy');
 var Promise = require('bluebird');
 var url = require('url');
 var mime = require('mime-types');
+var base64url = require('base64url');
+var crypto = require('crypto');
 var botUtil = require('../lib/utilities.js');
 
 var svcConfig = _.get(config, 'services.config.mediaproxy') || {};
 var proxy = httpProxy.createProxyServer();
 var permalinks = {};
-var api, log, stickerCodec;
+var api, log, encryptionKey;
 
 module.exports.init = function(resources, service) {
     api = resources.bot.api;
@@ -23,16 +25,17 @@ module.exports.init = function(resources, service) {
         if (extensionDot > 0) {
             id = id.substr(0, extensionDot);
         }
+        if (svcConfig.encryptFileId) {
+            id = decryptFileId(id);
+        }
 
         var hooks = [];
         var mimeType = mime.lookup(req.originalUrl);
         if (mimeType) {
-            hooks.push(_.partial(rewriteResponseHeaders,
-                {'content-type': mimeType}));
-        }
-        if (svcConfig.decodeWebp &&
-            _.endsWith(req.originalUrl.toLowerCase(), '.webp.png')) {
-            hooks.push({func: decodeWebp, buffer: true});
+            hooks.push(_.partial(rewriteResponseHeaders, {
+              'content-type': mimeType,
+              'content-disposition': 'inline'
+            }));
         }
         installResponseHooks(res, hooks);
 
@@ -40,14 +43,10 @@ module.exports.init = function(resources, service) {
             .then(function(fileInfo) {
                 var targetUriComponents = url.parse(api.getFileUri(fileInfo));
                 req.url = targetUriComponents.path;
-                req.headers = _.omit(req.headers, [
-                    'cookie', 'dnt', 'accept', 'upgrade-insecure-requests',
-                    'accept-language', 'origin', 'upgrade', 'via', 'referer'
+                req.headers = _.pick(req.headers, [
+                  'if-modified-since', 'if-none-match', 'cache-control',
+                  'if-range', 'range', 'accept-encoding'
                 ]);
-                req.headers = _.omit(req.headers, function(value, header) {
-                    return _.endsWith(header, 'authorization') ||
-                        _.startsWith(header, 'x-');
-                });
                 req.headers['user-agent'] = resources.app.identifier;
                 proxy.web(req, res, proxyOptions);
             })
@@ -64,7 +63,8 @@ module.exports.init = function(resources, service) {
             var baseUriComponents = url.parse(config.get('api.baseUri'));
             return baseUriComponents.protocol + '//' + baseUriComponents.host;
         })(),
-        secure: config.get('api.strictSSL')
+        secure: config.get('api.strictSSL'),
+        xfwd: false
     };
 
     proxy.on('error', function(err, req, res) {
@@ -73,17 +73,21 @@ module.exports.init = function(resources, service) {
         log.error(err);
     });
 
-    return botUtil.loadServiceDependencies([
-            'fileinfocache', 'stickercodec'
-        ], service)
+    var serviceDependencies = ['fileinfocache'];
+    if (svcConfig.encryptFileId) {
+      serviceDependencies.push('persist');
+    }
+    return botUtil.loadServiceDependencies(serviceDependencies, service)
         .then(function(services) {
             fileInfoCache = services.fileinfocache;
-            stickerCodec = services.stickercodec;
             if (!app) {
                 log.warn('web.enabled=false, not serving any files');
                 return;
             }
             app.get('/media/:id*', handleMediaRequest);
+            if (services.persist) {
+               return loadPersistentData(services.persist);
+            }
         });
 };
 
@@ -106,7 +110,9 @@ module.exports.handleMessage = function(message, meta) {
     if (!_.isObject(file)) {
         return;
     }
-    var uri = config.get('web.baseUri') + '/media/' + file.file_id;
+    var fileId = svcConfig.encryptFileId ?
+        encryptFileId(file.file_id) : file.file_id;
+    var uri = config.get('web.baseUri') + '/media/' + fileId;
 
     var audioMetaProps = [];
     _.forEach(['performer', 'title'], function(metaProp) {
@@ -121,7 +127,44 @@ module.exports.handleMessage = function(message, meta) {
     meta.permalink = uri + makeFileSuffix(media);
     permalinks[chatId] = permalinks[chatId] || [];
     permalinks[chatId].push(meta.permalink);
+
+    if (svcConfig.autoPermalink) {
+      servePermalink(chatId);
+    }
 };
+
+function loadPersistentData(persist) {
+    return Promise.try(function() {
+        return persist.load();
+    })
+    .then(function(container) {
+        if (!container.encryptionKey) {
+            container.encryptionKey = crypto.randomBytes(16).toString('base64');
+        }
+        encryptionKey = Buffer.from(container.encryptionKey, 'base64');
+    });
+}
+
+function encryptFileId(fileId) {
+    var binaryFileId = base64url.toBuffer(fileId);
+    var iv = crypto.randomBytes(16);
+    var cipher = crypto.createCipheriv('aes-128-cbc', encryptionKey, iv);
+    var encryptedFileId = Buffer.concat([
+        iv, cipher.update(binaryFileId), cipher.final()
+    ]);
+    return base64url.encode(encryptedFileId);
+}
+
+function decryptFileId(fileId) {
+    var encryptedFileId = base64url.toBuffer(fileId);
+    var iv = encryptedFileId.slice(0, 16);
+    var cipherText = encryptedFileId.slice(16);
+    var cipher = crypto.createDecipheriv('aes-128-cbc', encryptionKey, iv);
+    var decryptedFileId = Buffer.concat([
+        cipher.update(cipherText), cipher.final()
+    ]);
+    return base64url.encode(decryptedFileId);
+}
 
 function servePermalink(chatId, offset) {
     offset = Number(offset || 0);
@@ -142,65 +185,9 @@ function servePermalink(chatId, offset) {
 
 function rewriteResponseHeaders(rewrites, res) {
     _.forEach(rewrites, function(value, header) {
-        res.setHeader(header, value);
-    }, this);
-}
-
-function decodeWebp(res, status) {
-    res.removeHeader('accept-ranges');
-    if (status !== 200) {
-        res.removeHeader('content-type');
-        return;
-    }
-
-    var buf = new Buffer(0);
-    var _write = res.write;
-    var _end = res.end;
-
-    function flushResponse(data) {
-        res.write = _write;
-        _end.call(res, data);
-    }
-
-    res.write = function(data) {
-        if (Buffer.isBuffer(data)) {
-            buf = Buffer.concat([buf, data]);
+        if (_.inRange(res.statusCode, 200, 300)) {
+            res.setHeader(header, value);
         }
-    };
-
-    return new Promise(function(resolve) {
-        res.end = function(data, encoding) {
-            if (data) {
-                res.write(data, encoding);
-            }
-            if (res.statusCode !== 200) {
-                return resolve({
-                    postHeaderFlush: _.partial(flushResponse, buf)
-                });
-            }
-
-            var decodePromise = stickerCodec.decode(buf)
-                .then(function(result) {
-                    res.setHeader('content-length', result.length);
-                    res.setHeader('content-type', 'image/png');
-                    res.removeHeader('transfer-encoding');
-                    return {
-                        postHeaderFlush: _.partial(flushResponse, result)
-                    };
-                })
-                .catch(function(error) {
-                    log.error('Decode error:', error);
-                    res.setHeader('content-type', 'text/html');
-                    var payload = new Buffer('Internal Server Error');
-                    res.setHeader('content-length', payload.length);
-                    return {
-                        status: 500,
-                        postHeaderFlush:
-                            _.partial(flushResponse, payload)
-                    };
-                });
-            resolve(decodePromise);
-        };
     });
 }
 
@@ -291,9 +278,6 @@ function makeFileSuffix(media) {
     // Strategy 3: guess appropriate extension based on Telegram media type
     if (!suffix && type === 'sticker') {
         suffix = '/sticker.webp';
-        if (svcConfig.decodeWebp) {
-            suffix += '.png';
-        }
     }
     if (!suffix && type === 'photo') {
         suffix = '.jpg';
