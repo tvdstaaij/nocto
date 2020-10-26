@@ -84,7 +84,7 @@ module.exports.init = function(resources, service) {
                 log.warn('web.enabled=false, not serving any files');
                 return;
             }
-            app.get('/media/:id*', handleMediaRequest);
+            app.get(svcConfig.mediaPath + '/:id*', handleMediaRequest);
             if (services.persist) {
                return loadPersistentData(services.persist);
             }
@@ -112,7 +112,7 @@ module.exports.handleMessage = function(message, meta) {
     }
     var fileId = svcConfig.encryptFileId ?
         encryptFileId(file.file_id) : file.file_id;
-    var uri = config.get('web.baseUri') + '/media/' + fileId;
+    var uri = config.get('web.baseUri') + svcConfig.mediaPath + '/' + fileId;
 
     var audioMetaProps = [];
     _.forEach(['performer', 'title'], function(metaProp) {

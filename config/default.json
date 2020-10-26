@@ -114,6 +114,7 @@
                 "debug": false
             },
             "mediaproxy": {
+                "mediaPath": "/media",
                 "privileges": {
                     // Who is allowed to request file permalinks
                     "permalink": "user"
