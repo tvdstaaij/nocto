@@ -194,7 +194,7 @@ function getRecordByUserName(name) {
     if (name.length && name[0] === '@') {
         name = name.substr(1);
     }
-    var recordPair = _.find(_.pairs(users), function(recordPair) {
+    var recordPair = _.find(_.toPairs(users), function(recordPair) {
         return recordPair[1].identity.username === name;
     });
     return recordPair ? recordPair : undefined;

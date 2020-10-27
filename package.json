@@ -1,7 +1,7 @@
 {
   "name": "nocto",
   "description": "Modular Telegram bot using the official bot API",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "main": "nocto.js",
   "scripts": {
     "start": "node nocto.js",
