@@ -15,7 +15,7 @@ function isConfigCustomized() {
     return _.some(fs.readdirSync(configDir), function(filename) {
         filename = filename.toLowerCase();
         return (
-            !_.startsWith(filename, 'default') && _.endsWith(filename, '.json')
+            !_.startsWith(filename, 'default') && (_.endsWith(filename, '.json') || _.endsWith(filename, '.js'))
         );
     });
 }
