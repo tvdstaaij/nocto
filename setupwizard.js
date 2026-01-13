@@ -35,11 +35,7 @@ function runWizard() {
     var Promise = require('bluebird');
 
     function promptAsync(questions) {
-        return new Promise(function(resolve) {
-            return inquirer.prompt(questions, function(answers) {
-                return resolve(answers);
-            });
-        });
+        return inquirer.prompt(questions);
     }
 
     function abort() {
